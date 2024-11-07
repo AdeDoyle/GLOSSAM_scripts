@@ -1,5 +1,7 @@
 import os
 import fnmatch
+import re
+import string
 from nltk import wordpunct_tokenize as tze
 
 
@@ -181,9 +183,6 @@ def id_tokens():
                 elif 'head' in stripped_item:
                     segment_id = "Header"
 
-                elif 'rend="h1"' in stripped_item:
-                    segment_id = "Subheader"
-
                 elif 'ab xml:id="' in stripped_item:
                     key_start_index = stripped_item.find("ab xml:id=")
                     post_index_string = stripped_item[key_start_index:]
@@ -216,7 +215,9 @@ def id_tokens():
                 toks_count = [num + 1 for num, _ in enumerate(toks_sublist)]
                 toks_zip = zip(toks_sublist, [f'__{tok_id}' for tok_id in toks_count])
                 toks_sublist = [
-                    f'\n\t\t\t\t\t<w xml:id="{segment_id}{tagged_tok[1]}">{tagged_tok[0]}</w>'
+                    f'\n\t\t\t\t\t<pc xml:id="{segment_id}{tagged_tok[1]}">{tagged_tok[0]}</pc>' if all(
+                        char in string.punctuation for char in tagged_tok[0]
+                    ) else f'\n\t\t\t\t\t<w xml:id="{segment_id}{tagged_tok[1]}">{tagged_tok[0]}</w>'
                     for tagged_tok in toks_zip
                 ]
                 for space_num, space_type in enumerate(space_sublist):
@@ -258,18 +259,21 @@ def id_tokens():
                 key_end_ex = key_start_index + post_index_string.find('"', post_index_string.find('"') + 1)
                 segment_id = problem_gloss[key_start_index + 11:key_end_ex] + "__"
 
-                prob_gl_list = problem_gloss.split("</w>")
+                prob_gl_list = re.split(r"(</w>|</pc>)", problem_gloss)
                 fixed_gloss_list = []
-                for prob_tok_num, prob_tok in enumerate(prob_gl_list):
+                prob_tok_num = 0
+                for prob_tok in prob_gl_list:
+                    if "<w " in prob_tok or "<pc " in prob_tok:
+                        prob_tok_num += 1
                     if segment_id in prob_tok:
                         prob_id_index = prob_tok.find(segment_id)
                         old_gl_num = prob_tok[prob_id_index:]
                         old_gl_num = old_gl_num[:old_gl_num.find('"')]
-                        new_gl_num = f"{segment_id}{prob_tok_num + 1}"
+                        new_gl_num = f"{segment_id}{prob_tok_num}"
                         prob_tok = new_gl_num.join(prob_tok.split(old_gl_num))
                     fixed_gloss_list.append(prob_tok)
 
-                fixed_gloss = "</w>".join(fixed_gloss_list)
+                fixed_gloss = "".join(fixed_gloss_list)
                 new_xml_body = fixed_gloss.join(new_xml_body.split(problem_gloss))
 
         new_xml_file = (

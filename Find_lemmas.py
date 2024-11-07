@@ -79,13 +79,36 @@ def find_lems():
                                      ]
 
             # This section is for testing only. It eliminates all non-test collections. Remove after testing.
-            select_collections = [  # Remove to apply to all collections
+            select_collections = [
                 "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\E BK1.xml",
                 "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\K BK1.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\L BK1.xml"
+                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\L BK1.xml",
+                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\f2.xml",
+                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\f3.xml",
+                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\f5.xml",
+                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\g.xml",
+                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\j.xml"
             ]
             if match_name != "priscian" or gloss_file not in select_collections:
                 continue
+
+            # Before beginning, remove any nested <note> tags (type="editorial" or type="translation")
+            if "<note type=" in gloss_content_text:
+                note_count = gloss_content_text.count("<note type=")
+                gtc_list = []
+                for notenum in range(note_count):
+                    gtc_list.append(gloss_content_text[:gloss_content_text.find("<note type=")])
+                    gloss_content_text = gloss_content_text[gloss_content_text.find("<note type="):]
+                    found_note = gloss_content_text[:gloss_content_text.find(">") + 1]
+                    gtc_list.append("<nested_" + found_note[1:])
+                    gloss_content_text = gloss_content_text[len(found_note):]
+                    note_remainder = gloss_content_text[:gloss_content_text.find("</note>")]
+                    gtc_list.append(note_remainder)
+                    gtc_list.append("</nested_note>")
+                    gloss_content_text = gloss_content_text[len(note_remainder) + len("</note>"):]
+                    if notenum + 1 == note_count:
+                        gtc_list.append(gloss_content_text)
+                gloss_content_text = "".join(gtc_list)
 
             # Find each sequential <note> tag which occurs in the text file (these are used to identify lemmata)
             tagset = []
@@ -159,7 +182,8 @@ def find_lems():
                 lemma_line = "et".join(lemma_line.split("⁊"))
                 # Split the text segment into separate words
                 lemma_list = lemma_line.split("</w>")
-                lemma_list = [lem[lem.find("<w "):] for lem in lemma_list if lem not in ["", " "]]
+                lemma_list = [lem[lem.find("<w "):] for lem in lemma_list]
+                lemma_list = [lem for lem in lemma_list if "<w " in lem]
 
                 # Create a lookup list of tuples containing tokens from the base-text, their xml id numbers, and index
                 # Put the token itself in lower-case and swap out v's for u's
@@ -167,8 +191,8 @@ def find_lems():
                     (
                         "u".join(lem[lem.find(">") + 1:].split("v")).lower(),
                         lem[lem.find("<"):lem.find(">") + 1],
-                        i_lem + 1
-                    ) for i_lem, lem in enumerate(lemma_list)
+                        int(lem[lem.find("__") + 2:lem.find('">')])
+                    ) for lem in lemma_list
                 ]
                 # Remove undesirable characters from the base-text lookup list
                 unds_list = [".", ",", ":", ";", "«", "»"]
@@ -177,8 +201,10 @@ def find_lems():
                 # If this is the same base-text segment as last time,
                 # Remove lemmata up to the last matched token from the lookup list
                 if not new_base_segment:
-                    if cur_tok_no:
+                    if cur_tok_no and cur_tok_no != "not_supplied":
                         lemma_lookup = [fresh_lem for fresh_lem in lemma_lookup if fresh_lem[2] >= cur_tok_no]
+                    elif cur_tok_no:
+                        lemma_lookup = [fresh_lem for fresh_lem in lemma_lookup]
                     else:
                         raise RuntimeError("Expected current token number from last pass")
                 # If this is a different base-text segment to last time, reset the token counter
@@ -265,6 +291,7 @@ def find_lems():
                 if lemma_note:
                     if "No Lemma Tagged for Gloss" in lemma_note:
                         updated_gloss = found_gloss
+                        cur_tok_no = "not_supplied"
                     updated_gloss = lemma_note + "\n\t\t\t\t" + updated_gloss
 
                 textlist.append(reduce_text[:find_pos])
@@ -276,6 +303,7 @@ def find_lems():
                         textlist.append(reduce_text)
 
             new_xml_body = "".join(textlist)
+            new_xml_body = "note".join(new_xml_body.split("nested_note"))
             new_xml_file = (
                     gloss_content[:gloss_content.find("<body>")] +
                     new_xml_body +
