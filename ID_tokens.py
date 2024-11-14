@@ -216,7 +216,7 @@ def id_tokens():
                 toks_zip = zip(toks_sublist, [f'__{tok_id}' for tok_id in toks_count])
                 toks_sublist = [
                     f'\n\t\t\t\t\t<pc xml:id="{segment_id}{tagged_tok[1]}">{tagged_tok[0]}</pc>' if all(
-                        char in string.punctuation for char in tagged_tok[0]
+                        char in string.punctuation + "«»" for char in tagged_tok[0]
                     ) else f'\n\t\t\t\t\t<w xml:id="{segment_id}{tagged_tok[1]}">{tagged_tok[0]}</w>'
                     for tagged_tok in toks_zip
                 ]
