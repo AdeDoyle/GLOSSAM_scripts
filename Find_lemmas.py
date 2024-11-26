@@ -87,6 +87,7 @@ def find_lems():
                 "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\f3.xml",
                 "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\f5.xml",
                 "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\g.xml",
+                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\G - Mary.xml",
                 "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\j.xml"
             ]
             if match_name != "priscian" or gloss_file not in select_collections:
