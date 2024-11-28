@@ -45,6 +45,15 @@ def get_xml_lemmata(file_name):
                 sent = sent[sent.find("</seg>") + len("</seg>"):]
                 lem_list.append((id_no, lemma))
 
+    # # Ensure all lemma IDs are unique
+    # id_list = [i[0] for i in lem_list]
+    # # print(id_list)
+    # id_set = set(id_list)
+    # # print(id_set)
+    # if len(id_list) != len(id_set):
+    #     # print([j for j in id_set if id_list.count(j) > 1])
+    #     # raise RuntimeError("Lemma IDs not all unique.")
+
     for lem in lem_list:
         print(lem)
 
