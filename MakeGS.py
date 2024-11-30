@@ -131,8 +131,38 @@ def get_xml_glosses(file_name):
         group_list.append(gloss_group)
         text_reduce = text_reduce[text_reduce.find("</hi:glossGrp>") + len("</hi:glossGrp>"):]
 
-    # for grp in group_list:
-    #     print([grp])
+    # Refine the gloss groups to separate lists of glosses and gloss clusters
+    gloss_list = list()
+    clusters = list()
+    for grp in group_list:
+        grp_reduce = grp[:]
+        if '<gloss ' in grp_reduce:
+            while '<gloss ' in grp_reduce:
+                grp_reduce = grp_reduce[grp_reduce.find('<gloss ') + len('<gloss '):]
+                id_no = grp_reduce[grp_reduce.find("xml:id=") + len("xml:id=") + 1:grp_reduce.find('" corresp')]
+                id_no = id_no.strip()
+                grp_reduce = grp_reduce[grp_reduce.find(">") + 1:]
+                gloss_text = grp_reduce[:grp_reduce.find("</gloss>")]
+                grp_reduce = grp_reduce[grp_reduce.find("</gloss>") + len("</gloss>"):]
+                gloss_list.append((id_no, gloss_text))
+        grp_reduce = grp[:]
+        if '<hi:glossCluster ' in grp_reduce:
+            while '<hi:glossCluster ' in grp_reduce:
+                grp_reduce = grp_reduce[grp_reduce.find('<hi:glossCluster ') + len('<hi:glossCluster '):]
+                grp_reduce = grp_reduce[grp_reduce.find('>') + 1:]
+                this_group = grp_reduce[:grp_reduce.find('</hi:glossCluster>')]
+                this_group = this_group.strip()
+                grouped_glosses = list()
+                while '<ptr ' in this_group:
+                    this_group = this_group[this_group.find('<ptr '):]
+                    id_no = this_group[this_group.find("target=") + len("target=") + 2:this_group.find("/>") - 1]
+                    grouped_glosses.append(id_no)
+                    this_group = this_group[this_group.find("/>") + len("/>"):]
+                grp_reduce = grp_reduce[grp_reduce.find('</hi:glossCluster>') + len('</hi:glossCluster>'):]
+                clusters.append(grouped_glosses)
+
+    for grp in gloss_list:
+        print(grp)
 
     return ""
 
