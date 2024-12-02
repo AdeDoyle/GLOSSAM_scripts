@@ -1,4 +1,6 @@
 import os
+import random
+import pickle as pkl
 
 
 def open_xml(file_name):
@@ -137,12 +139,42 @@ def get_xml_glosses(file_name):
     for grp in group_list:
         grp_reduce = grp[:]
         if '<gloss ' in grp_reduce:
+
+            # Remove undesirable tags from the text content
+            for xml_tag in [
+                "<add>", "</add>", "<choice>", "</choice>", "<corr>", "</corr>", "<del>", "</del>", "</seg>", "<sic>",
+                "</sic>", "<subst>", "</subst>", "<supplied>", "</supplied>", "<unclear>", "</unclear>"
+            ]:
+                grp_reduce = "".join(grp_reduce.split(xml_tag))
+
+            grp_reduce = grp_reduce.split("<gap")
+            for gr_num, gr_split in enumerate(grp_reduce):
+                if gr_num != 0:
+                    grp_reduce[gr_num] = gr_split[gr_split.find("/>") + 2:]
+            grp_reduce = "".join(grp_reduce)
+            grp_reduce = grp_reduce.split("<seg")
+            for gr_num, gr_split in enumerate(grp_reduce):
+                if gr_num != 0:
+                    grp_reduce[gr_num] = gr_split[gr_split.find(">") + 1:]
+            grp_reduce = "".join(grp_reduce)
+            while "<note>" in grp_reduce:
+                grp_reduce = (
+                        grp_reduce[:grp_reduce.find("<note>")] +
+                        grp_reduce[grp_reduce.find("</note>") + len("</note>"):]
+                )
+
+            # Remove all new line characters and multiple spacing from the text contents
+            grp_reduce = " ".join(grp_reduce.split("\n"))
+            while "  " in grp_reduce:
+                grp_reduce = " ".join(grp_reduce.split("  "))
+
             while '<gloss ' in grp_reduce:
                 grp_reduce = grp_reduce[grp_reduce.find('<gloss ') + len('<gloss '):]
                 id_no = grp_reduce[grp_reduce.find("xml:id=") + len("xml:id=") + 1:grp_reduce.find('" corresp')]
                 id_no = id_no.strip()
                 grp_reduce = grp_reduce[grp_reduce.find(">") + 1:]
                 gloss_text = grp_reduce[:grp_reduce.find("</gloss>")]
+                gloss_text = gloss_text.strip()
                 grp_reduce = grp_reduce[grp_reduce.find("</gloss>") + len("</gloss>"):]
                 gloss_list.append((id_no, gloss_text))
         grp_reduce = grp[:]
@@ -161,30 +193,153 @@ def get_xml_glosses(file_name):
                 grp_reduce = grp_reduce[grp_reduce.find('</hi:glossCluster>') + len('</hi:glossCluster>'):]
                 clusters.append(grouped_glosses)
 
-    for grp in gloss_list:
-        print(grp)
+    # Ensure all lemma IDs are unique
+    id_list = [i[0] for i in gloss_list]
+    id_set = set(id_list)
+    if len(id_list) != len(id_set):
+        print([j for j in id_set if id_list.count(j) > 1])
+        raise RuntimeError("Gloss IDs not all unique.")
+    else:
+        gloss_dict = {i[0]: i[1] for i in gloss_list}
 
-    return ""
+    return [gloss_dict, clusters]
 
 
-def gen_gs():
+def gen_gs(development_set=True, verbose=True):
     """
-    Generates a Gold Standard Test Set from
+    Generates a Gold Standard Test Set (optionally including a development set) from Isidore XML file
 
     :return:
     """
 
+    # Get lemmata
     # gold_xml_lemmata = get_xml_lemmata("Isidore_Gold")
+
+    # Get glosses
     gold_gloss_data = get_xml_glosses("Isidore_Gold")
+    gloss_dict = gold_gloss_data[0]
+    gloss_clusters = gold_gloss_data[1]
 
-    return gold_gloss_data
+    # Split related glosses into pairs
+    gloss_pairs = list()
+    for cl in gloss_clusters:
+        if len(cl) == 2:
+            gloss_pairs.append(cl)
+        elif len(cl) > 2:
+            new_pairs = list()
+            for id_no, id_label in enumerate(cl):
+                for id2_no, id2_label in enumerate(cl):
+                    if id2_no > id_no:
+                        new_pairs.append([id_label, id2_label])
+            for np in new_pairs:
+                gloss_pairs.append(np)
 
-# Create an algorithm to produce gold standard for glossing relationships, based on Evina’s data.
-# First extract all gloss info (glosses, lemmata, IDs).
-# Next extract relationship info between glosses (related gloss IDs, weights, etc.).
-#     Note: w=1-4 represented as `weight="4"`
+    # Get the text of related glosses, and compile into a list
+    related_glosses = [[gloss_dict.get(gl_id) for gl_id in gl_pair] for gl_pair in gloss_pairs]
+    related_glosses = [gl_pair for gl_pair in related_glosses if gl_pair[0] != '' and gl_pair[1] != '']
+
+    for i in gloss_pairs:
+        if len(i) != 2:
+            raise RuntimeError
+
+    # Compile a list of glosses on the same lemma which may or may not be related (later remove related glosses)
+    lemma_ids = [i[:i.find("_")] for i in gloss_dict]
+    multi_lemma_ids = [i for i in lemma_ids if lemma_ids.count(i) > 1]
+    ml_id_set = list()
+    for ml_id in multi_lemma_ids:
+        if ml_id not in ml_id_set:
+            ml_id_set.append(ml_id)
+    multi_lemma_gloss_ids = [i for i in gloss_dict if i[:i.find("_")] in ml_id_set]
+    unrelated_gl_groups = list()
+    for lemma_id in ml_id_set:
+        this_gl_group = list()
+        for gl_id in multi_lemma_gloss_ids:
+            if gl_id[:gl_id.find("_")] ==  lemma_id:
+                this_gl_group.append(gl_id)
+        unrelated_gl_groups.append(this_gl_group)
+    # Split gloss groups into pairs glosses which share a single lemma
+    unrelated_gl_pairs = list()
+    for gr in unrelated_gl_groups:
+        if len(gr) == 2:
+            unrelated_gl_pairs.append(gr)
+        elif len(gr) > 2:
+            new_pairs = list()
+            for id_no, id_label in enumerate(gr):
+                for id2_no, id2_label in enumerate(gr):
+                    if id2_no > id_no:
+                        new_pairs.append([id_label, id2_label])
+            for np in new_pairs:
+                unrelated_gl_pairs.append(np)
+
+    # Get the text of related glosses, and compile into a list
+    unrelated_gl_texts = [[gloss_dict.get(gl_id) for gl_id in gl_pair] for gl_pair in unrelated_gl_pairs]
+
+    # Remove related glosses from unrelated gloss list
+    unrelated_gl_texts = [
+        i for i in unrelated_gl_texts
+        if i not in related_glosses and [i[1], i[0]] not in related_glosses and i[0] != '' and i[1] != ''
+    ]
+
+    # Output stats for glosses
+    if verbose:
+        onepc = 100 / (len(related_glosses) + len(unrelated_gl_texts))
+        print(f"Related gloss pairs: {len(related_glosses)}, {round(onepc * len(related_glosses), 2)}%")
+        print(f"Unrelated gloss pairs: {len(unrelated_gl_texts)}, {round(onepc * len(unrelated_gl_texts), 2)}%")
+
+    # Shuffle related glosses and unrelated glosses separately
+    random.shuffle(related_glosses)
+    random.shuffle(unrelated_gl_texts)
+
+    if development_set:
+        # Split each gloss-pair list in half
+        dev_related = related_glosses[:int(len(related_glosses) / 2)]
+        dev_unrelated = unrelated_gl_texts[:int(len(unrelated_gl_texts) / 2)]
+        test_related = related_glosses[int(len(related_glosses) / 2):]
+        test_unrelated = unrelated_gl_texts[int(len(unrelated_gl_texts) / 2):]
+
+        # Create development set by combining half of related and half of unrelated gloss pairs
+        dev_set = dev_related + dev_unrelated
+        # Shuffle related and unrelated glosses
+        random.shuffle(dev_set)
+
+        # Create test set by combining half of related and half of unrelated gloss pairs
+        test_set = test_related + test_unrelated
+        # Shuffle related and unrelated glosses
+        random.shuffle(test_set)
+
+    else:
+        # Create test set by combining half of related and half of unrelated gloss pairs
+        test_set = related_glosses + unrelated_gl_texts
+        # Shuffle related and unrelated glosses
+        random.shuffle(test_set)
+
+    # Save the test set to a PKL file
+    with open('Gold Standard Test.pkl', 'wb') as testfile:
+        pkl.dump(test_set, testfile)
+
+    if development_set:
+        # Save the test set to a PKL file
+        with open('Gold Standard Dev.pkl', 'wb') as devfile:
+            pkl.dump(dev_set, devfile)
+
+
+def load_gs(pkl_file):
+    """
+    Load saved PKL files
+    """
+
+    # Loading the PKL file
+    with open(pkl_file, 'rb') as loadfile:
+        file_loaded = pkl.load(loadfile)
+
+    return file_loaded
 
 
 if __name__ == "__main__":
 
-    print(gen_gs())
+    # Generate new Dev and Test files
+    # gen_gs()
+
+    # Load premade Dev and Test files
+    print(load_gs('Gold Standard Test.pkl'))
+    print(load_gs('Gold Standard Dev.pkl'))
