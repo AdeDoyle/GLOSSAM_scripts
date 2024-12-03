@@ -276,9 +276,14 @@ def gen_gs(development_set=True, verbose=True):
 
     # Remove related glosses from unrelated gloss list
     unrelated_gl_texts = [
-        i for i in unrelated_gl_texts
-        if i not in related_glosses and [i[1], i[0]] not in related_glosses and i[0] != '' and i[1] != ''
+        i for i in unrelated_gl_texts if i not in related_glosses and [
+            i[1], i[0]
+        ] not in related_glosses and i[0] != '' and i[1] != ''
     ]
+
+    # Add Labels to identify related and unrelated glosses
+    related_glosses = [i + ["Related"] for i in related_glosses]
+    unrelated_gl_texts = [i + ["Unrelated"] for i in unrelated_gl_texts]
 
     # Output stats for glosses
     if verbose:
@@ -337,7 +342,7 @@ def load_gs(pkl_file):
 
 if __name__ == "__main__":
 
-    # Generate new Dev and Test files
+    # # Generate new Dev and Test files
     # gen_gs()
 
     # Load premade Dev and Test files
