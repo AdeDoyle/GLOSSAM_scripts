@@ -35,6 +35,8 @@ def find_lems():
                 file_path = os.path.join(base_path, filename)
                 if os.path.isfile(file_path):
                     base_files[filename[:filename.find("_tokenised.xml")]] = file_path
+                else:
+                    raise RuntimeError(f"Could not find file path: {file_path}")
 
     # For each .xml file found in the first-level subdirectories
     for basefile in base_files:
@@ -56,6 +58,10 @@ def find_lems():
                             gloss_file_path = os.path.join(this_gloss_path, filename)
                             if os.path.isfile(gloss_file_path):
                                 gloss_collections.append(gloss_file_path)
+                            else:
+                                raise RuntimeError(f"Could not find file path: {gloss_file_path}")
+                else:
+                    raise RuntimeError(f"Could not find file path: {this_gloss_path}")
 
         # For each collection of glosses found
         for gloss_file in gloss_collections:
@@ -231,7 +237,7 @@ def find_lems():
                         if lem_tok == fg_lemma:
                             lemma_key = lem_tok_inst[1]
                             lemma_key = lemma_key[lemma_key.find('xml:id="') + len('xml:id="'):]
-                            lemma_key = f"#{lemma_key[:lemma_key.find('"')]}"
+                            lemma_key = f"""#{lemma_key[:lemma_key.find('"')]}"""
                             cur_tok_no = int(lemma_key[lemma_key.find("__")+2:])
                             break
 
@@ -247,7 +253,7 @@ def find_lems():
                             u_match = True
                             lemma_key = lem_tok_inst[1]
                             lemma_key = lemma_key[lemma_key.find('xml:id="') + len('xml:id="'):]
-                            lemma_key = f"#{lemma_key[:lemma_key.find('"')]}"
+                            lemma_key = f"""#{lemma_key[:lemma_key.find('"')]}"""
                             cur_tok_no = int(lemma_key[lemma_key.find("__") + 2:])
                             break
 
@@ -262,7 +268,7 @@ def find_lems():
                         min_lev_norm = min_lev[1]
                         min_lev_info = min_lev[2][1]
                         lemma_key = min_lev_info[min_lev_info.find('xml:id="') + len('xml:id="'):]
-                        lemma_key = f"#{lemma_key[:lemma_key.find('"')]}"
+                        lemma_key = f"""#{lemma_key[:lemma_key.find('"')]}"""
                         lemma_note = (f"<!-- re-examine: Levenshtein distance used to find the closest match - "
                                       f"Edit distance: {min_lev[0]} ('{this_fg_lemma}' to '{min_lev[2][0]}') - "
                                       f"Difference: {min_lev_norm}% -->")
@@ -277,12 +283,12 @@ def find_lems():
                         # If this is the first lemma matched in the base-text segment
                         if lem_tok == fg_lemma and lemma_key == "None Found":
                             lemma_key = lem_id[lem_id.find('xml:id="') + len('xml:id="'):]
-                            lemma_key = f"#{lemma_key[:lemma_key.find('"')]}"
+                            lemma_key = f"""#{lemma_key[:lemma_key.find('"')]}"""
                             cur_tok_no = int(lemma_key[lemma_key.find("__") + 2:])
                         # If this is not the first lemma matched in the base-text segment
                         elif lem_tok == fg_lemma and "#" in lemma_key:
                             additional_lemma_key = lem_id[lem_id.find('xml:id="') + len('xml:id="'):]
-                            lemma_key = f"{lemma_key} #{additional_lemma_key[:additional_lemma_key.find('"')]}"
+                            lemma_key = f"""{lemma_key} #{additional_lemma_key[:additional_lemma_key.find('"')]}"""
                         lemma_note = "<!-- re-examine: Multiple possible matches found -->"
 
                 split_tag = found_tag.split('target="')
@@ -294,6 +300,22 @@ def find_lems():
                         updated_gloss = found_gloss
                         cur_tok_no = "not_supplied"
                     updated_gloss = lemma_note + "\n\t\t\t\t" + updated_gloss
+                    if "None Found" in updated_gloss:
+                        print("bar")
+                elif lemma_key == "None Found":
+                    for lem_tok_inst in lemma_lookup:
+                        lem_tok = lem_tok_inst[0]
+                        lem_id = lem_tok_inst[1]
+                        # if lem_tok == fg_lemma:
+                        #     print(lem_tok_inst)
+                        #     raise RuntimeError
+                    print("woo")
+                    # print([fg_lemma])
+                    # print(lemma_lookup)
+                    # print(split_tag)
+                    # print([updated_tag])
+                    # print([updated_gloss])
+                    # print([found_gloss[len(found_tag):]])
 
                 textlist.append(reduce_text[:find_pos])
                 textlist.append(updated_gloss)
