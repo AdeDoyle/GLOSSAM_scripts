@@ -301,21 +301,29 @@ def find_lems():
                         cur_tok_no = "not_supplied"
                     updated_gloss = lemma_note + "\n\t\t\t\t" + updated_gloss
                     if "None Found" in updated_gloss:
-                        print("bar")
+                        try:
+                            lem_id = lemma_lookup[0][1]
+                        except IndexError:
+                            lem_id = lemma_lookup[1]
+                        line_id = lem_id[lem_id.find("w xml:id=") + len("w xml:id=") + 1:lem_id.find("__")]
+                        lemma_key = line_id
+                        updated_tag = split_tag[0] + f'target="{lemma_key}"' + split_tag[1]
+                        updated_gloss = updated_tag + found_gloss[len(found_tag):]
+                        lemma_note = (lemma_note[:lemma_note.find(" -->")] +
+                                      " - Gloss could be matched to line number only" +
+                                      lemma_note[lemma_note.find(" -->"):])
+                        updated_gloss = lemma_note + "\n\t\t\t\t" + updated_gloss
                 elif lemma_key == "None Found":
-                    for lem_tok_inst in lemma_lookup:
-                        lem_tok = lem_tok_inst[0]
-                        lem_id = lem_tok_inst[1]
-                        # if lem_tok == fg_lemma:
-                        #     print(lem_tok_inst)
-                        #     raise RuntimeError
-                    print("woo")
-                    # print([fg_lemma])
-                    # print(lemma_lookup)
-                    # print(split_tag)
-                    # print([updated_tag])
-                    # print([updated_gloss])
-                    # print([found_gloss[len(found_tag):]])
+                    try:
+                        lem_id = lemma_lookup[0][1]
+                    except IndexError:
+                        lem_id = lemma_lookup[1]
+                    line_id = lem_id[lem_id.find("w xml:id=") + len("w xml:id=") + 1:lem_id.find("__")]
+                    lemma_key = line_id
+                    updated_tag = split_tag[0] + f'target="{lemma_key}"' + split_tag[1]
+                    updated_gloss = updated_tag + found_gloss[len(found_tag):]
+                    lemma_note = "<!-- re-examine: Gloss could be matched to line number only -->"
+                    updated_gloss = lemma_note + "\n\t\t\t\t" + updated_gloss
 
                 textlist.append(reduce_text[:find_pos])
                 textlist.append(updated_gloss)
