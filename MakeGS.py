@@ -122,7 +122,7 @@ def get_xml_glosses(file_name):
     # Load xml file
     gold_xml = open_xml(file_name)
 
-    # Isolate relevant contents
+    # Isolate relevant text contents from XML file
     text_range = gold_xml[gold_xml.find("<hi:listGlossGrp>"):gold_xml.find("</hi:listGlossGrp>") + len("</hi:listGlossGrp>")]
 
     # Add each gloss grouping to a list of gloss groups
@@ -318,11 +318,18 @@ def gen_gs(development_set=True, verbose=True):
         # Shuffle related and unrelated glosses
         random.shuffle(test_set)
 
+    # Remove any null text values form the test set
+    test_set = [i for i in test_set if i[0] and i[1]]
+
     # Save the test set to a PKL file
     with open('Gold Standard Test.pkl', 'wb') as testfile:
         pkl.dump(test_set, testfile)
 
     if development_set:
+
+        # Remove any null text values form the dev set
+        dev_set = [i for i in dev_set if i[0] and i[1]]
+
         # Save the test set to a PKL file
         with open('Gold Standard Dev.pkl', 'wb') as devfile:
             pkl.dump(dev_set, devfile)

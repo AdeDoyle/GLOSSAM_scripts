@@ -29,7 +29,60 @@ def ed_compare(str1, str2):
     return result
 
 
-def compare_glosses(glosses, method="ED"):
+def lcs(s1, s2):
+    """finds the longest common substring of two strings"""
+
+    len_s1, len_s2 = len(s1), len(s2)
+    dp = [[0] * (len_s2 + 1) for _ in range(len_s1 + 1)]
+    max_length = 0
+    end_index = 0
+
+    for i in range(1, len_s1 + 1):
+        for j in range(1, len_s2 + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                if dp[i][j] > max_length:
+                    max_length = dp[i][j]
+                    end_index = i
+
+    return s1[end_index - max_length:end_index]
+
+
+def slcs(s1, s2):
+    """finds the longest, then the second longest common substring of two strings"""
+
+    lcsubstr = lcs(s1, s2)
+
+    if lcsubstr:
+        s1_minus = "".join(s1.split(lcsubstr))
+        s2_minus = "".join(s2.split(lcsubstr))
+        slcsubstr = lcs(s1_minus, s2_minus)
+    else:
+        slcsubstr = ""
+
+    return lcsubstr, slcsubstr
+
+
+def lcs_compare(s1, s2, n=82):
+    """Compares two strings, predicts whether they're related based on longest (and 2nd longest) common substring"""
+
+    lcs1, lcs2 = slcs(s1, s2)
+    combo_lcs = len(lcs1) + len(lcs2)
+
+    len_s1, len_s2 = len(s1), len(s2)
+    min_len = min(len_s1, len_s2)
+    # max_len = max(len_s1, len_s2)
+    cutoff = min_len*(n/100)
+
+    if combo_lcs >= cutoff:
+        result = "Related"
+    else:
+        result = "Unrelated"
+
+    return result
+
+
+def compare_glosses(glosses, method):
     """
     Compares two sets of glosses, predicts whether each gloss is related or unrelated
     """
@@ -39,6 +92,8 @@ def compare_glosses(glosses, method="ED"):
     # If using the edit distance method
     if method == "ED":
         results = [ed_compare(g[0], g[1]) for g in glosses]
+    elif method == "LCS":
+        results = [lcs_compare(g[0], g[1]) for g in glosses]
     # If using any other method (none ready yet)
     else:
         results = labels
@@ -76,7 +131,8 @@ def compare_glosses(glosses, method="ED"):
 if __name__ == "__main__":
 
     dev_set = load_gs("Gold Standard Dev.pkl")
-    print(compare_glosses(dev_set))
+    print(compare_glosses(dev_set, "ED"))
+    print(compare_glosses(dev_set, "LCS"))
 
     """
     The following results were recorded using the edit distance method to compare glosses from the development set.
