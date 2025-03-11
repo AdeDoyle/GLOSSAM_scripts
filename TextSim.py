@@ -24,11 +24,13 @@ def norm_ld(s1, s2):
     return lev_norm
 
 
-def ed_compare(str1, str2):
+def ed_compare(str1, str2, n=100):
     """Compares two strings, predicts whether they're related based on edit distance"""
 
+    cutoff = n/100
+
     lev_norm = norm_ld(str1, str2)
-    if lev_norm >= 1.0:
+    if lev_norm >= cutoff:
         result = "Related"
     else:
         result = "Unrelated"
@@ -154,7 +156,7 @@ def load_cluster_plot(file_name="Scatter Plot.pkl"):
     return file_loaded
 
 
-def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None):
+def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_percent=50):
     """
     Compares two sets of glosses, predicts whether each gloss is related or unrelated
     Scores predictions by comparison to known correct labels to calculate Accuracy, precision, recall and f-measure
@@ -164,13 +166,13 @@ def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None):
 
     # If using the edit distance method
     if method == "ED":
-        results = [ed_compare(g[0], g[1]) for g in glosses]
+        results = [ed_compare(g[0], g[1], cutoff_percent) for g in glosses]
     # If using the longest common substring method
     elif method == "LCS":
-        results = [lcs_compare(g[0], g[1]) for g in glosses]
+        results = [lcs_compare(g[0], g[1], cutoff_percent) for g in glosses]
     # If using a large language model method
     elif method == "LLM":
-        results = [llm_compare(g[0], g[1], gloss_vec_mapping, model) for g in glosses]
+        results = [llm_compare(g[0], g[1], gloss_vec_mapping, model, cutoff_percent) for g in glosses]
     # If using any other method
     else:
         results = labels
@@ -209,8 +211,8 @@ if __name__ == "__main__":
 
     dev_set = load_gs("Gold Standard Dev.pkl")
 
-    # print(compare_glosses(dev_set, "ED"))
-    # print(compare_glosses(dev_set, "LCS"))
+    # print(compare_glosses(dev_set, "ED", cutoff_percent=100))
+    # print(compare_glosses(dev_set, "LCS", cutoff_percent=82))
 
     # # Test CUDA and GPU
     # print(torch.cuda.is_available())
@@ -233,7 +235,7 @@ if __name__ == "__main__":
         gloss_dict[gloss] = embedded_sentences[gloss_index]
     clusters = apply_clustering(embedded_sentences, "KMeans", 6)
 
-    print(compare_glosses(dev_set, "LLM", gloss_dict, llm))
+    print(compare_glosses(dev_set, "LLM", gloss_dict, llm, 55))
 
     # Create a plot from the development set
     plot = plot_clusters(glosses_to_embed, embedded_sentences, clusters)

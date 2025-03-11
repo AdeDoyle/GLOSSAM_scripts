@@ -43,9 +43,11 @@ Contains all functions necessary to compare gloss similarity by various means. T
 2. Longest Common Substring Method
 3. LLM Method
 
-## Description of Functions Used to Compare Glosses
+## Description of Functions
 
-### Generate or Load the Gold Standard (including development set and test set split)
+The following is a basic walkthrough of the basic functions required to compare gloss similarity using various methods.
+
+### Generate or Load the Gold Standard
 
 First it is necessary to generate the Gold Standard from Steinová's edition:
 
@@ -57,4 +59,74 @@ Once the gold standard has been initially generated, the development set can be 
 
 Run `dev_set = load_gs("Gold Standard Dev.pkl")`
 
+### Comparing glosses
 
+All glosses are compared using the `compare_glosses()` function, however, the arguments which must be passed to the function vary depending on the comparison method being employed. Using the large-language-model method also requires that extra steps be taken before the `compare_glosses()` function can be run.
+
+The following are the arguments and possible values which can be passed to the `compare_glosses()` function:
+
+1. `glosses` (required)
+   1. `dev_set`
+2. `method` (required)
+   1. `"ED"` - Edit Distance
+   2. `"LCS"` - Lowest Common Substring
+   3. `"LLM"` - Large Language Model
+3. `gloss_vec_mapping`
+   1. `None` (default)
+   2. `gloss_dict` (a dictionary mapping the text of glosses to their embeddings)
+4. `model`
+   1. `None` (default)
+   2. `llm` (the large language model from Hugging Face used to create the embeddings)
+5. `cutoff_percent`
+   1. `50` (default)
+   2. `int` (any integer value between 0 and 100)
+
+To use the Levenshtein Distance (edit distance) comparison method, run:
+
+`print(compare_glosses(dev_set, "ED", cutoff_percent=100))`
+
+To use the Longest Common Substring comparison method, run:
+
+`print(compare_glosses(dev_set, "LCS", cutoff_percent=82))`
+
+To use the Large-Language-Model comparison method, there are a few precursors to running the comparison function
+
+* First create a set of all unique glosses to be embedded:
+
+    Run `glosses_to_embed = sorted(list(set([g[0] for g in dev_set] + [g[1] for g in dev_set])))`
+
+* Next identify potential models to use to create embeddings:
+
+    Run `m1 = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin"`
+
+    Run `m2 = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-latin"`
+
+* Next select a specific model to use:
+
+    Run `llm = SentenceTransformer(m1)`
+
+* Next create embeddings for glosses:
+
+    Run `embedded_sentences = llm.encode(glosses_to_embed)`
+
+* Next generate a dictionary mapping glosses to their embeddings:
+
+    Run
+
+      for gloss_index, gloss in enumerate(glosses_to_embed):
+          gloss_dict[gloss] = embedded_sentences[gloss_index]
+
+* Finally, use the LLM to compare glosses
+
+    Run `print(compare_glosses(dev_set, "LLM", gloss_dict, llm, 55))`
+
+Regardless of the gloss comparison method employed, the results of the `compare_glosses()` function include:
+
+1. Total number of True Positives achieved (TP)
+2. Total number of False Positives achieved (FP)
+3. Total number of True Negatives achieved (TN)
+4. Total number of False Negatives achieved (FN)
+5. Accuracy score
+6. Precision score
+7. Recall score
+8. f-measure
