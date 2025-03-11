@@ -43,4 +43,18 @@ Contains all functions necessary to compare gloss similarity by various means. T
 2. Longest Common Substring Method
 3. LLM Method
 
-## Description of Functions
+## Description of Functions Used to Compare Glosses
+
+### Generate or Load the Gold Standard (including development set and test set split)
+
+First it is necessary to generate the Gold Standard from Steinová's edition:
+
+Run `gen_gs()`
+
+This will create pickle files for both the development set and the test set.
+
+Once the gold standard has been initially generated, the development set can be loaded:
+
+Run `dev_set = load_gs("Gold Standard Dev.pkl")`
+
+

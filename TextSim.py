@@ -89,7 +89,8 @@ def lcs_compare(s1, s2, n=82):
     return result
 
 
-def apply_clustering(emb_array, clustering_method="DBSCAN", clusters=2):
+def apply_clustering(emb_array, clustering_method="KMeans", clusters=2):
+    """Applies a clustering algorithm to gloss vectors to identify semantically linked glosses"""
 
     embedded_clusters = None
 
@@ -105,6 +106,7 @@ def apply_clustering(emb_array, clustering_method="DBSCAN", clusters=2):
 
 
 def plot_clusters(sentences, embeddings, clustered_embeddings, plot_name="Latin Gloss Embeddings"):
+    """Reduces dimensionality of (gloss) sentence embeddings to 2D and creates a scatterplot for them"""
 
     tsne_embedded = TSNE(n_components=2).fit_transform(embeddings)
 
@@ -123,6 +125,7 @@ def plot_clusters(sentences, embeddings, clustered_embeddings, plot_name="Latin 
 
 
 def llm_compare(gloss_1, gloss_2, gloss_vec_mapping, model, n=50):
+    """Compares two glosses, predicts whether they're related based on semantic similarity"""
 
     similarity_score = model.similarity(gloss_vec_mapping.get(gloss_1), gloss_vec_mapping.get(gloss_2))
     similarity_score = similarity_score.item()
@@ -138,11 +141,13 @@ def llm_compare(gloss_1, gloss_2, gloss_vec_mapping, model, n=50):
 
 
 def save_cluster_plot(fig, file_name="Scatter Plot.pkl"):
+    """Saves a scatter plot generated using the plot_clusters() function as a pickle file"""
     with open(file_name, 'wb') as spl:
         pkl.dump(fig, spl)
 
 
 def load_cluster_plot(file_name="Scatter Plot.pkl"):
+    """Loads a scatter plot from a pickle file"""
     with open(file_name, 'rb') as loadfile:
         file_loaded = pkl.load(loadfile)
 
