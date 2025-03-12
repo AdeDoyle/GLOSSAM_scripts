@@ -10,8 +10,21 @@ The following libraries will need to be installed in the working environment (us
 2. scikit-learn: `pip install scikit-learn`
 3. pandas: `pip install pandas`
 4. Plotly: `pip install plotly`
-5. Pytorch: `pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118` (see [https://pytorch.org/](https://pytorch.org/))
+5. Pytorch: `pip3 install torch torchvision torchaudio` (see [https://pytorch.org/](https://pytorch.org/) for version compatibility with CUDA, and OS-specific compatibility issues)
 6. Sentence Transformers: `pip install sentence-transformers`
+
+It will also be necessary to ensure that a version of CUDA toolkit is installed which is compatible with the Pytorch installation.
+
+## Test CUDA and GPU
+
+To ensure that the Pytorch installation is utilising CUDA run:
+
+    import torch
+    print(torch.cuda.is_available())
+
+To ensure that Pytorch has access to the GPU to increase the speed of model training/fine tuning, etc. run:
+
+    print(torch.cuda.get_device_name(0))
 
 ## Description of Files
 
@@ -62,7 +75,22 @@ Once the gold standard has been initially generated, the development set can be 
 
 Run:
 
+    from MakeGS import load_gs
     dev_set = load_gs("Gold Standard Dev.pkl")
+
+The format of the development set is a list of sub-lists. Each sub-list contains a pair of glosses as the first and second elements, and a label as the third element which indicates whether the pair of glosses are related or unrelated. For example:
+
+    [
+        ['id est viventem', 'vivum', 'Unrelated'],
+        ['velaminibus', 'opertoriis', 'Unrelated'],
+        ['non aperta', 'perturbata', 'Unrelated'],
+        ['id est circumlongus', 'circumlongus', 'Related'],
+        ['pro navi', 'navis de pine', 'Unrelated'],
+        ['circumlongus', 'circumlongus', 'Related'],
+        ['dispensationem', 'id est dispensativam', 'Unrelated']
+    ]
+
+To use any of the following comparison methods with a new corpus, or to generate sentence embeddings for any new corpus using the following functions, the corpus must first be rendered in the same format as this development set.
 
 ### Comparing glosses
 
@@ -114,7 +142,11 @@ The `cutoff_percent` argument for this method represents the percentage of one o
 
 If using the LLM comparison method, there are a few precursors to running the comparison function.
 
-First create a set of all unique glosses to be embedded:
+First import Sentence Transformers library:
+
+    from sentence_transformers import SentenceTransformer
+
+Next create a set of all unique glosses to be embedded:
 
     glosses_to_embed = sorted(list(set(
         [g[0] for g in dev_set] + [g[1] for g in dev_set]
@@ -129,12 +161,15 @@ Next select a specific LLM model to use:
 
     llm = SentenceTransformer(m1)
 
+Note: The first time this function is run, it will download the sentence transformers library. This may take several minutes. It may also require a token to be set up in your Python interpreter from a Hugging Face account for certain models depending on licencing.
+
 Next create embeddings for glosses:
 
     embedded_sentences = llm.encode(glosses_to_embed)
 
 Next generate a dictionary mapping glosses to their embeddings:
 
+    gloss_dict = dict()
     for gloss_index, gloss in enumerate(glosses_to_embed):
         gloss_dict[gloss] = embedded_sentences[gloss_index]
 
@@ -160,3 +195,58 @@ Regardless of the gloss comparison method employed, the results of the `compare_
 6. Precision score
 7. Recall score
 8. f-measure
+
+Changing the value of `cutoff_percent` will alter the quality of results for each comparison method. Default values for `cutoff_percent` are currently set to be roughly optimised for each comparison method, however, other parameters may also affect the output (for example, using m2 instead of m1, or using a different LLM entirely).
+
+### Visualising LLM Embeddings
+
+The multidimensional sentence embeddings produced by the LLM comparison method can be visualised by applying a clustering algorithm, then projecting the results into 2D.
+
+First, load the necessary functions:
+
+    from TextSim import apply_clustering, plot_clusters
+
+Next, apply the clustering algorithm to the embeddings:
+
+    clusters = apply_clustering(embedded_sentences)
+
+By default, the `apply_clustering` function utilises k-means clustering, which requires the number of clusters to be manually specified. The number of specified clusters is set to 2 by default, however, different numbers of clusters can be selected like so:
+
+    clusters = apply_clustering(embedded_sentences, num_clusters=6)
+
+It is also possible to apply DBSCAN (density-based spatial clustering of applications with noise) instead of k-means clustering. DBSCAN does not require the number of clusters to be specified, and can be applied like so:
+
+    clusters = apply_clustering(embedded_sentences, clustering_method="DBSCAN")
+
+Once clustering has been applied to the embeddings, apply dimensionality reduction and generate scatterplot:
+
+    plot = plot_clusters(glosses_to_embed, embedded_sentences, clusters)
+
+The default name for the plot is set to `"Latin Gloss Embeddings"`, however, a different name can be selected like so:
+
+    plot = plot_clusters(glosses_to_embed, embedded_sentences, clusters, plot_name="Greek Gloss Embeddings")
+
+Finally, display the plot:
+
+    plot.show()
+
+### Saving and Loading Embedding Plots
+
+Once a plot has been set to a variable, as above, it can be saved to a pickle file as follows and later reloaded as follows.
+
+First, load the necessary functions:
+
+    from TextSim import save_cluster_plot, load_cluster_plot
+
+To save a plot run:
+
+    save_cluster_plot(plot)
+
+By default, the name of the saved file will be `Scatter Plot.pkl`, however, an alternative name can be selected like so:
+
+    save_cluster_plot(plot, file_name="Plot of Clusters")
+
+To later reload a saved plot, set it to a new variable, then display it, run:
+
+    loaded_plot = load_cluster_plot(file_name="Scatter Plot.pkl")
+    loaded_plot.show()

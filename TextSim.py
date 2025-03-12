@@ -19,7 +19,6 @@ def norm_ld(s1, s2):
     max_dif = max(l1, l2)  # Find the length of the larger of the two strings (this is the max possible edit distance)
 
     lev_norm = (lev_dist/max_dif)*100  # Normalise the edit distance, then render as a percentage of difference
-    # lev_norm = round(lev_norm, 2)  # Round to two decimal places
 
     return lev_norm
 
@@ -27,10 +26,7 @@ def norm_ld(s1, s2):
 def ed_compare(str1, str2, n=100):
     """Compares two strings, predicts whether they're related based on edit distance"""
 
-    if n == 0:
-        cutoff = 0
-    else:
-        cutoff = n/100
+    cutoff = n
 
     lev_norm = norm_ld(str1, str2)
     if lev_norm >= cutoff:
@@ -151,8 +147,9 @@ def llm_compare(gloss_1, gloss_2, gloss_vec_mapping, model, n=50):
     return result
 
 
-def save_cluster_plot(fig, file_name="Scatter Plot.pkl"):
+def save_cluster_plot(fig, file_name="Scatter Plot"):
     """Saves a scatter plot generated using the plot_clusters() function as a pickle file"""
+    file_name = file_name + ".pkl"
     with open(file_name, 'wb') as spl:
         pkl.dump(fig, spl)
 
@@ -174,7 +171,7 @@ def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_
     labels = [g[2] for g in glosses]
 
     # If a cutoff is supplied
-    if cutoff_percent:
+    if isinstance(cutoff_percent, int):
         # If using the edit distance method
         if method == "ED":
             results = [ed_compare(g[0], g[1], cutoff_percent) for g in glosses]
@@ -235,12 +232,8 @@ if __name__ == "__main__":
 
     dev_set = load_gs("Gold Standard Dev.pkl")
 
-    # print(compare_glosses(dev_set, "ED", cutoff_percent=100))
-    # print(compare_glosses(dev_set, "LCS", cutoff_percent=82))
-
-    # # Test CUDA and GPU
-    # print(torch.cuda.is_available())
-    # print(torch.cuda.get_device_name(0))
+    print(compare_glosses(dev_set, "ED", cutoff_percent=100))
+    print(compare_glosses(dev_set, "LCS", cutoff_percent=82))
 
     # Select text to embed
     glosses_to_embed = sorted(list(set(
@@ -257,20 +250,13 @@ if __name__ == "__main__":
     gloss_dict = dict()
     for gloss_index, gloss in enumerate(glosses_to_embed):
         gloss_dict[gloss] = embedded_sentences[gloss_index]
-    clusters = apply_clustering(embedded_sentences, "KMeans", 6)
 
     print(compare_glosses(dev_set, "LLM", gloss_dict, llm, 55))
 
     # Create a plot from the development set
+    clusters = apply_clustering(embedded_sentences, "KMeans", 6)
     plot = plot_clusters(glosses_to_embed, embedded_sentences, clusters)
     plot.show()
-
-    # # Save the plot as a pickle file
-    # save_cluster_plot(plot)
-
-    # # Load the pickle file for the plot and display it
-    # loaded_matrix = load_cluster_plot()
-    # loaded_matrix.show()
 
     """
     The following results were recorded using the edit distance method to compare glosses from the development set.
