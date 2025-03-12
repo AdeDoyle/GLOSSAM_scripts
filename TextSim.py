@@ -27,7 +27,10 @@ def norm_ld(s1, s2):
 def ed_compare(str1, str2, n=100):
     """Compares two strings, predicts whether they're related based on edit distance"""
 
-    cutoff = n/100
+    if n == 0:
+        cutoff = 0
+    else:
+        cutoff = n/100
 
     lev_norm = norm_ld(str1, str2)
     if lev_norm >= cutoff:
@@ -80,8 +83,11 @@ def lcs_compare(s1, s2, n=82):
 
     len_s1, len_s2 = len(s1), len(s2)
     min_len = min(len_s1, len_s2)
-    # max_len = max(len_s1, len_s2)
-    cutoff = min_len*(n/100)
+
+    if n == 0:
+        cutoff = 0
+    else:
+        cutoff = min_len*(n/100)
 
     if combo_lcs >= cutoff:
         result = "Related"
@@ -91,13 +97,13 @@ def lcs_compare(s1, s2, n=82):
     return result
 
 
-def apply_clustering(emb_array, clustering_method="KMeans", clusters=2):
+def apply_clustering(emb_array, clustering_method="KMeans", num_clusters=2):
     """Applies a clustering algorithm to gloss vectors to identify semantically linked glosses"""
 
     embedded_clusters = None
 
     if clustering_method == "KMeans":
-        kmeans = KMeans(n_clusters=clusters, random_state=42)
+        kmeans = KMeans(n_clusters=num_clusters, random_state=42)
         embedded_clusters = kmeans.fit_predict(emb_array)
 
     elif clustering_method == "DBSCAN":
@@ -132,7 +138,10 @@ def llm_compare(gloss_1, gloss_2, gloss_vec_mapping, model, n=50):
     similarity_score = model.similarity(gloss_vec_mapping.get(gloss_1), gloss_vec_mapping.get(gloss_2))
     similarity_score = similarity_score.item()
 
-    cutoff = n / 100
+    if n == 0:
+        cutoff = 0
+    else:
+        cutoff = n / 100
 
     if similarity_score >= cutoff:
         result = "Related"
@@ -156,7 +165,7 @@ def load_cluster_plot(file_name="Scatter Plot.pkl"):
     return file_loaded
 
 
-def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_percent=50):
+def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_percent=None):
     """
     Compares two sets of glosses, predicts whether each gloss is related or unrelated
     Scores predictions by comparison to known correct labels to calculate Accuracy, precision, recall and f-measure
@@ -164,18 +173,33 @@ def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_
 
     labels = [g[2] for g in glosses]
 
-    # If using the edit distance method
-    if method == "ED":
-        results = [ed_compare(g[0], g[1], cutoff_percent) for g in glosses]
-    # If using the longest common substring method
-    elif method == "LCS":
-        results = [lcs_compare(g[0], g[1], cutoff_percent) for g in glosses]
-    # If using a large language model method
-    elif method == "LLM":
-        results = [llm_compare(g[0], g[1], gloss_vec_mapping, model, cutoff_percent) for g in glosses]
-    # If using any other method
+    # If a cutoff is supplied
+    if cutoff_percent:
+        # If using the edit distance method
+        if method == "ED":
+            results = [ed_compare(g[0], g[1], cutoff_percent) for g in glosses]
+        # If using the longest common substring method
+        elif method == "LCS":
+            results = [lcs_compare(g[0], g[1], cutoff_percent) for g in glosses]
+        # If using a large language model method
+        elif method == "LLM":
+            results = [llm_compare(g[0], g[1], gloss_vec_mapping, model, cutoff_percent) for g in glosses]
+        # If using any other method
+        else:
+            results = labels
     else:
-        results = labels
+        # If using the edit distance method
+        if method == "ED":
+            results = [ed_compare(g[0], g[1]) for g in glosses]
+        # If using the longest common substring method
+        elif method == "LCS":
+            results = [lcs_compare(g[0], g[1]) for g in glosses]
+        # If using a large language model method
+        elif method == "LLM":
+            results = [llm_compare(g[0], g[1], gloss_vec_mapping, model) for g in glosses]
+        # If using any other method
+        else:
+            results = labels
 
     tp = 0
     tn = 0

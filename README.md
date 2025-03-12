@@ -47,28 +47,33 @@ Contains all functions necessary to compare gloss similarity by various means. T
 
 The following is a basic walkthrough of the basic functions required to compare gloss similarity using various methods.
 
-### Generate or Load the Gold Standard
+### Generate and Load the Gold Standard
 
-First it is necessary to generate the Gold Standard from Steinová's edition:
+First it is necessary to generate the Gold Standard from Steinová's edition. This requires that the `.xml` file for Steinová's edition be in the current working directory, and that it be named `Isidore_Gold.xml`.
 
-Run `gen_gs()`
+Run:
 
-This will create pickle files for both the development set and the test set.
+    from MakeGS import gen_gs
+    gen_gs()
 
-Once the gold standard has been initially generated, the development set can be loaded:
+This will create pickle files for both the development set and the test set in the current working directory. These will be named `Gold Standard Dev.pkl` and `Gold Standard Test.pkl` respectively.
 
-Run `dev_set = load_gs("Gold Standard Dev.pkl")`
+Once the gold standard has been initially generated, the development set can be loaded and set to a variable.
+
+Run:
+
+    dev_set = load_gs("Gold Standard Dev.pkl")
 
 ### Comparing glosses
 
-All glosses are compared using the `compare_glosses()` function, however, the arguments which must be passed to the function vary depending on the comparison method being employed. Using the large-language-model method also requires that extra steps be taken before the `compare_glosses()` function can be run.
+All glosses are compared using the `compare_glosses()` function, however, the arguments which must be passed to the function vary depending on the comparison method being employed. The arguments `glosses` and `method` are required to be supplied any time the function is run. Default values are supplied for the arguments `gloss_vec_mapping`, `model`, and `cutoff_percent`, which will be used as necessary by the function, depending which type of comparison method is being used. The default values for these arguments can be replaced by supplying new values when running the function. Using the large-language-model method also requires that extra steps be taken before the `compare_glosses()` function can be run.
 
 The following are the arguments and possible values which can be passed to the `compare_glosses()` function:
 
 1. `glosses` (required)
    1. `dev_set`
 2. `method` (required)
-   1. `"ED"` - Edit Distance
+   1. `"ED"` - Edit Distance (i.e. Levenshtein Distance)
    2. `"LCS"` - Lowest Common Substring
    3. `"LLM"` - Large Language Model
 3. `gloss_vec_mapping`
@@ -81,44 +86,69 @@ The following are the arguments and possible values which can be passed to the `
    1. `50` (default)
    2. `int` (any integer value between 0 and 100)
 
-To use the Levenshtein Distance (edit distance) comparison method, run:
+To use this function, first load it in by running:
 
-`print(compare_glosses(dev_set, "ED", cutoff_percent=100))`
+    from TextSim import compare_glosses
 
-To use the Longest Common Substring comparison method, run:
+### The Levenshtein Distance Comparsion Method
 
-`print(compare_glosses(dev_set, "LCS", cutoff_percent=82))`
+To use this method, run:
 
-To use the Large-Language-Model comparison method, there are a few precursors to running the comparison function
+    print(compare_glosses(dev_set, "ED"))
 
-* First create a set of all unique glosses to be embedded:
+The `cutoff_percent` argument for this method represents the threshold for the percentage of difference which is tolerable between two strings (glosses) while still considering them to be "related". The default value is `100` (i.e. 100%), so only strings which are exact matches will be considered to be related by default. The value for `cutoff_percent` can be altered by supplying it when running the function, like so:
 
-    Run `glosses_to_embed = sorted(list(set([g[0] for g in dev_set] + [g[1] for g in dev_set])))`
+    print(compare_glosses(dev_set, "ED", cutoff_percent=70))
 
-* Next identify potential models to use to create embeddings:
+### The Longest Common Substring Comparison Method
 
-    Run `m1 = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin"`
+To use this method, run:
 
-    Run `m2 = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-latin"`
+    print(compare_glosses(dev_set, "LCS"))
 
-* Next select a specific model to use:
+The `cutoff_percent` argument for this method represents the percentage of one of the two strings (glosses) which must be comprised of the longest common substring in order for the two glosses to be considered "related". The default value is `82` (i.e. 82%). The value for `cutoff_percent` can be altered by supplying it when running the function, like so:
 
-    Run `llm = SentenceTransformer(m1)`
+    print(compare_glosses(dev_set, "LCS", cutoff_percent=70))
 
-* Next create embeddings for glosses:
+### The Large-Language-Model (LLM) Comparison Method
 
-    Run `embedded_sentences = llm.encode(glosses_to_embed)`
+If using the LLM comparison method, there are a few precursors to running the comparison function.
 
-* Next generate a dictionary mapping glosses to their embeddings:
+First create a set of all unique glosses to be embedded:
 
-    Run
+    glosses_to_embed = sorted(list(set(
+        [g[0] for g in dev_set] + [g[1] for g in dev_set]
+    )))
 
-      for gloss_index, gloss in enumerate(glosses_to_embed):
-          gloss_dict[gloss] = embedded_sentences[gloss_index]
+Next identify potential models to use to create embeddings:
 
-* Finally, use the LLM to compare glosses
+    m1 = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin"
+    m2 = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-latin"
 
-    Run `print(compare_glosses(dev_set, "LLM", gloss_dict, llm, 55))`
+Next select a specific LLM model to use:
+
+    llm = SentenceTransformer(m1)
+
+Next create embeddings for glosses:
+
+    embedded_sentences = llm.encode(glosses_to_embed)
+
+Next generate a dictionary mapping glosses to their embeddings:
+
+    for gloss_index, gloss in enumerate(glosses_to_embed):
+        gloss_dict[gloss] = embedded_sentences[gloss_index]
+
+Finally, use the LLM to compare glosses:
+
+    print(compare_glosses(dev_set, "LLM", gloss_dict, llm))
+
+It is necessary to supply non-null values for the arguments `gloss_vec_mapping` (a mapping of the text of glosses to their embeddings) and `model` (the LLM being employed) when comparing glosses using the LLM comparison method.
+
+The `cutoff_percent` argument for this method represents the minimum percentage of semantic similarity required between two gloss embeddings in order to consider the two glosses to be "related". The default value is `50` (i.e. 50% semantic similarity). The value for `cutoff_percent` can be altered by supplying it when running the function, like so:
+
+    print(compare_glosses(dev_set, "LLM", gloss_dict, llm, cutoff_percent=70))
+
+### Results
 
 Regardless of the gloss comparison method employed, the results of the `compare_glosses()` function include:
 
