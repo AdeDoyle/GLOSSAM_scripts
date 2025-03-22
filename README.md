@@ -185,7 +185,7 @@ The `cutoff_percent` argument for this method represents the minimum percentage 
 
 ### Results
 
-Regardless of the gloss comparison method employed, the results of the `compare_glosses()` function include:
+Regardless of the gloss comparison method employed, the results of the `compare_glosses()` function take the form of a list. This list includes, in order:
 
 1. Total number of True Positives achieved (TP)
 2. Total number of False Positives achieved (FP)
@@ -197,6 +197,12 @@ Regardless of the gloss comparison method employed, the results of the `compare_
 8. f-measure
 
 Changing the value of `cutoff_percent` will alter the quality of results for each comparison method. Default values for `cutoff_percent` are currently set to be roughly optimised for each comparison method, however, other parameters may also affect the output (for example, using m2 instead of m1, or using a different LLM entirely).
+
+The `organise_output()` function can be used in tandem with the `compare_glosses()` function to make this output more readable. For example:
+
+    print(organise_output(compare_glosses(dev_set, "ED")))
+    print(organise_output(compare_glosses(dev_set, "LCS")))
+    print(organise_output(compare_glosses(dev_set, "LLM", gloss_dict, llm)))
 
 ### Visualising LLM Embeddings
 

@@ -221,6 +221,14 @@ def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_
     else:
         f_measure = round(2 * ((precision * recall) / (precision + recall)), 2)
 
+    return [tp, fp, tn, fn, accuracy, precision, recall, f_measure]
+
+
+def organise_output(comparison_data):
+    """Takes output list from compare_glosses function and displays it in a more readable way"""
+
+    tp, fp, tn, fn, accuracy, precision, recall, f_measure = comparison_data
+
     return (
         f"        TP: {tp}, FP: {fp}, TN: {tn}, FN: {fn}\n"
         f"        Accuracy: {accuracy},\n        Precision: {precision},\n"
@@ -232,8 +240,8 @@ if __name__ == "__main__":
 
     dev_set = load_gs("Gold Standard Dev.pkl")
 
-    print(compare_glosses(dev_set, "ED", cutoff_percent=100))
-    print(compare_glosses(dev_set, "LCS", cutoff_percent=82))
+    print(organise_output(compare_glosses(dev_set, "ED", cutoff_percent=100)))
+    print(organise_output(compare_glosses(dev_set, "LCS", cutoff_percent=82)))
 
     # Select text to embed
     glosses_to_embed = sorted(list(set(
@@ -251,7 +259,7 @@ if __name__ == "__main__":
     for gloss_index, gloss in enumerate(glosses_to_embed):
         gloss_dict[gloss] = embedded_sentences[gloss_index]
 
-    print(compare_glosses(dev_set, "LLM", gloss_dict, llm, 55))
+    print(organise_output(compare_glosses(dev_set, "LLM", gloss_dict, llm, 55)))
 
     # Create a plot from the development set
     clusters = apply_clustering(embedded_sentences, "KMeans", 6)
