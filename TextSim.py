@@ -240,6 +240,11 @@ def organise_output(comparison_data):
 def save_all_outputs():
     """Saves outputs for all models with all potential variables"""
 
+    headings = [
+        ["True Positives", "False Positives", "True Negatives", "False Negatives",
+         "Accuracy", "Precision", "Recall", "F-Measure"]
+    ]
+
     main_dir = os.getcwd()
     if not os.path.isdir("Model Outputs"):
         os.mkdir("Model Outputs")
@@ -248,14 +253,14 @@ def save_all_outputs():
 
     methods = ["ED", "LCS"]
     for method in methods:
-        data = [compare_glosses(dev_set, method, cutoff_percent=i) for i in range(101)]
+        data = headings + [compare_glosses(dev_set, method, cutoff_percent=i) for i in range(101)]
 
         # Convert to DataFrame
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(data[1:], columns=data[0])
 
         # Save to Excel
         os.chdir(os.path.join(main_dir, "Model Outputs"))
-        df.to_excel(f"{method} data.xlsx", index=False, header=False)
+        df.to_excel(f"{method} data.xlsx", index=False)
         os.chdir(main_dir)
 
     glosses_to_embed = sorted(list(set(
@@ -277,14 +282,14 @@ def save_all_outputs():
         for gloss_index, gloss in enumerate(glosses_to_embed):
             gloss_dict[gloss] = embeddings[gloss_index]
 
-        data = [compare_glosses(dev_set, "LLM", gloss_dict, trans_model, i) for i in range(101)]
+        data = headings + [compare_glosses(dev_set, "LLM", gloss_dict, trans_model, i) for i in range(101)]
 
         # Convert to DataFrame
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(data[1:], columns=data[0])
 
         # Save to Excel
         os.chdir(os.path.join(main_dir, "Model Outputs"))
-        df.to_excel(f"{model} data.xlsx", index=False, header=False)
+        df.to_excel(f"{model} data.xlsx", index=False)
         os.chdir(main_dir)
 
     return "Process complete!"
