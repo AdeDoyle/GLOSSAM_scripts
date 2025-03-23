@@ -200,9 +200,17 @@ Changing the value of `cutoff_percent` will alter the quality of results for eac
 
 The `organise_output()` function can be used in tandem with the `compare_glosses()` function to make this output more readable. For example:
 
+    from TextSim import organise_output
     print(organise_output(compare_glosses(dev_set, "ED")))
     print(organise_output(compare_glosses(dev_set, "LCS")))
     print(organise_output(compare_glosses(dev_set, "LLM", gloss_dict, llm)))
+
+### Saving Results for All Models
+
+The `save_all_outputs()` function can be used to save the output of all models and variables to spreadsheets without running the individual models separately. It uses all possible values for `cutoff_percent` between 0 and 100 for each model. It can be called without passing any arguments, like so:
+
+    from TextSim import save_all_outputs
+    save_all_outputs()
 
 ### Visualising LLM Embeddings
 
