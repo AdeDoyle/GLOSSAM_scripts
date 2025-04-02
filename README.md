@@ -1,34 +1,74 @@
-# How To Guide for GLOSSAM Scripts
+# Guide for GLOSSAM Scripts
 
-This file provides a basic overview of GLOSSAM scripts to enable their use with new corpora. It is expected that users will be familiar with Python, capable of installing necessary dependencies, and already working in a virtual environment (or happy to install the necessary dependencies in their base envionment). It also assumes that users have access to an onboard CUDA enabled GPU or TPU, and have already installed the CUDA toolkit on their hardware.
+This file provides a basic overview of GLOSSAM scripts to enable their use with new corpora.
 
-## Dependencies
+## Prerequisites
 
-The following libraries will need to be installed in the working environment (using pip, conda, etc.).
+Certain folders and paths are necessary to ensure the correct functioning of the scripts described here. It is also expected that users will be familiar with Python, and capable of installing necessary dependencies. Some models used here also require that users have access to an onboard CUDA enabled GPU or TPU, and have already installed the CUDA toolkit on their hardware.
+
+### Folders
+
+The following folders and their contents are required:
+
+* `basetexts`
+  * This folder contains `.xml` files for primary texts (formatted as required for the Gloss Corpus website)
+* `collections`
+  * This folder contains sub-folders for each `.xml` file in `basetexts`
+    * e.g. `aelfric`, `felire`, `isidore`, `josephus`, `priscian`
+    * Each of these sub-folders contains `.xml` files for relevant gloss collections (formatted as required for the Gloss Corpus website)
+* `gloss_comparisons`
+  * This folder can be used to run gloss similarity analysis on specific gloss collections
+    * These collections must be formatted as required for the Gloss Corpus website
+    * These gloss collections should be related to the same primary text in `basetexts`
+
+Note, these folders must be named exactly as they are here, and their names are case-sensitive.
+
+### Dependencies
+
+The following libraries will also need to be installed in the working environment (using pip, conda, etc.).
 
 1. Natural Language Toolkit (NLTK): `pip install nltk`
-2. scikit-learn: `pip install scikit-learn`
-3. pandas: `pip install pandas`
-4. Plotly: `pip install plotly`
-5. Pytorch: `pip3 install torch torchvision torchaudio` (see [https://pytorch.org/](https://pytorch.org/) for version compatibility with CUDA, and OS-specific compatibility issues)
-6. Sentence Transformers: `pip install sentence-transformers`
+2. Beautiful Soup: `pip install beautifulsoup4`
+3. scikit-learn: `pip install scikit-learn`
+4. pandas: `pip install pandas`
+5. OpenPyXL: `pip install openpyxl`
+6. Plotly: `pip install plotly`
+7. Pytorch: `pip3 install torch torchvision torchaudio` (see [https://pytorch.org/](https://pytorch.org/) for version compatibility with CUDA, and OS-specific compatibility issues)
+8. Sentence Transformers: `pip install sentence-transformers`
 
 It will also be necessary to ensure that a version of CUDA toolkit is installed which is compatible with the Pytorch installation.
 
-## Test CUDA and GPU
+### Test CUDA and GPU
 
 To ensure that the Pytorch installation is utilising CUDA run:
 
     import torch
     print(torch.cuda.is_available())
 
-To ensure that Pytorch has access to the GPU to increase the speed of model training/fine tuning, etc. run:
+To ensure that Pytorch has access to the GPU to increase the speed of model training/fine-tuning, etc. run:
 
     print(torch.cuda.get_device_name(0))
 
-## Description of Files
+# TL;DR - Quick-run Gloss Similarity Model
 
-The following files comprise the GLOSSAM scripts. They contain all Python functions written for this project to date:
+To run the best performing gloss similarity model on a group of gloss collections, take the following steps:
+
+1. Add the gloss collections to the `gloss_comparisons` folder.
+2. Run the following:
+
+
+    from Apply_models import apply_bestmod
+    apply_bestmod()
+
+Note: The gloss collections must be linked to the same primary text file in the `basetexts` folder.
+
+# Detailed Description of Files and Functions
+
+This section is intended to support users who want to adjust hyperparameters of models, or otherwise interact on a deeper level with the GLOSSAM code pipeline.
+
+## Description of Python Files
+
+The following Python files comprise the GLOSSAM scripts. They contain all functions written for this project to date.
 
 ### Find_lemmas.py
 
@@ -50,11 +90,15 @@ For the sake of training/fine-tuning of models in the future, it is intended tha
 
 ### TextSim.py
 
-Contains all functions necessary to compare gloss similarity by various means. These currently include the following methods:
+Contains all functions necessary to compare gloss similarity by various means for the purpose of assessing models. These currently include the following methods:
 
 1. Levenshtein Distance Method
 2. Longest Common Substring Method
 3. LLM Method
+
+### Apply_models.py
+
+Contains functions to apply gloss similarity models to real-world gloss collections.
 
 ## Description of Functions
 
