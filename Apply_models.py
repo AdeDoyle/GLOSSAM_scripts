@@ -96,9 +96,11 @@ def apply_bestmod(folder_path="default", cutoff="default", model="default", llm=
         if result == "Related":
             related_glosses.append(full_gloss_pairs[result_index])
     related_glosses = [[pair[0][0], pair[0][1], pair[0][3], pair[1][0], pair[1][1], pair[1][3]] for pair in related_glosses]
+    header = ["Gl. 1 MS", "Gl. 1 no.", "Gloss 1", "Gl. 2 MS", "Gl. 2 no.", "Gloss 2"]
+    related_glosses = header + related_glosses
 
     df = pd.DataFrame(related_glosses)
-    df.to_excel(f"Related Gloss Output.xlsx", index=False, header=False)
+    df.to_excel(f"Related Gloss Output.xlsx", index=False)
 
 
 if __name__ == "__main__":
