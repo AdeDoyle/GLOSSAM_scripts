@@ -17,6 +17,8 @@ def prep_files(folder_path="default"):
     # Load file data
     filetexts = list()
     for filename in filenames:
+        if filename.startswith('.'):
+            continue
         with open(os.path.join(folder_path, filename), 'r', encoding="utf-8") as loadfile:
             file_loaded = loadfile.read()
         filetexts.append(file_loaded[file_loaded.find("<text>"):file_loaded.find("</text>") + len("</text>")])
@@ -96,10 +98,8 @@ def apply_bestmod(folder_path="default", cutoff="default", model="default", llm=
         if result == "Related":
             related_glosses.append(full_gloss_pairs[result_index])
     related_glosses = [[pair[0][0], pair[0][1], pair[0][3], pair[1][0], pair[1][1], pair[1][3]] for pair in related_glosses]
-    header = ["Gl. 1 MS", "Gl. 1 no.", "Gloss 1", "Gl. 2 MS", "Gl. 2 no.", "Gloss 2"]
-    related_glosses = header + related_glosses
 
-    df = pd.DataFrame(related_glosses)
+    df = pd.DataFrame(related_glosses, columns=["Gl. 1 MS", "Gl. 1 no.", "Gloss 1", "Gl. 2 MS", "Gl. 2 no.", "Gloss 2"])
     df.to_excel(f"Related Gloss Output.xlsx", index=False)
 
 
