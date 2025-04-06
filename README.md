@@ -62,6 +62,21 @@ To run the best performing gloss similarity model on a group of gloss collection
 
 Note: The gloss collections must be linked to the same primary text file in the `basetexts` folder.
 
+## Quick-run specific models
+
+To run other models with optimised parameters this can be done by specifying the required model. For example, to use the edit distance model, run the following:
+
+    apply_bestmod(model="ED")
+
+Alternatively, to use the longest common substring model, run the following:
+
+    apply_bestmod(model="LCS")
+
+If you would like to run an LLM model other than the one found to be optimised for this task, a particular model from Hugging Face can be specified like so:
+
+    model_link = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin"
+    apply_bestmod(model="LLM", llm=model_link)
+
 # Detailed Description of Files and Functions
 
 This section is intended to support users who want to adjust hyperparameters of models, or otherwise interact on a deeper level with the GLOSSAM code pipeline.

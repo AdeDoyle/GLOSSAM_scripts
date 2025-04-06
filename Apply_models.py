@@ -1,6 +1,6 @@
 import os
 from bs4 import BeautifulSoup
-from TextSim import llm_compare
+from TextSim import ed_compare, lcs_compare, llm_compare
 from sentence_transformers import SentenceTransformer
 import pandas as pd
 
@@ -64,7 +64,7 @@ def prep_files(folder_path="default"):
     return prepped
 
 
-def apply_bestmod(folder_path="default", cutoff="default", model="default", llm="default"):
+def apply_bestmod(folder_path="default", model="default", cutoff="default", llm="default"):
     """Uses the best performing model to perform text similarity analysis on glosses"""
 
     full_gloss_pairs = prep_files(folder_path)
@@ -73,7 +73,19 @@ def apply_bestmod(folder_path="default", cutoff="default", model="default", llm=
     if model == "default":
         model = "LLM"
 
-    if model == "LLM":
+    results = []
+
+    if model == "ED":
+        if cutoff == "default":
+            cutoff = 98
+        results = [ed_compare(g[0], g[1], cutoff) for g in basic_gloss_pairs]
+
+    elif model == "LCS":
+        if cutoff == "default":
+            cutoff = 82
+        results = [lcs_compare(g[0], g[1], cutoff) for g in basic_gloss_pairs]
+
+    elif model == "LLM":
 
         if cutoff == "default":
             cutoff = 55
@@ -97,12 +109,16 @@ def apply_bestmod(folder_path="default", cutoff="default", model="default", llm=
     for result_index, result in enumerate(results):
         if result == "Related":
             related_glosses.append(full_gloss_pairs[result_index])
-    related_glosses = [[pair[0][0], pair[0][1], pair[0][3], pair[1][0], pair[1][1], pair[1][3]] for pair in related_glosses]
+    related_glosses = [
+        [pair[0][0], pair[0][1], pair[0][3], pair[1][0], pair[1][1], pair[1][3]] for pair in related_glosses
+    ]
 
     df = pd.DataFrame(related_glosses, columns=["Gl. 1 MS", "Gl. 1 no.", "Gloss 1", "Gl. 2 MS", "Gl. 2 no.", "Gloss 2"])
-    df.to_excel(f"Related Gloss Output.xlsx", index=False)
+    df.to_excel(f"Related Gloss Output ({model}).xlsx", index=False)
 
 
 if __name__ == "__main__":
 
     apply_bestmod()
+    apply_bestmod(model="ED")
+    apply_bestmod(model="LCS")
