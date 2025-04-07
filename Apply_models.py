@@ -77,7 +77,7 @@ def apply_bestmod(folder_path="default", model="default", cutoff="default", llm=
 
     if model == "ED":
         if cutoff == "default":
-            cutoff = 98
+            cutoff = 60
         results = [ed_compare(g[0], g[1], cutoff) for g in basic_gloss_pairs]
 
     elif model == "LCS":

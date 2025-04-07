@@ -30,10 +30,10 @@ def ed_compare(str1, str2, n=100):
     cutoff = n
 
     lev_norm = norm_ld(str1, str2)
-    if lev_norm >= cutoff:
-        result = "Related"
-    else:
+    if lev_norm > cutoff:
         result = "Unrelated"
+    else:
+        result = "Related"
 
     return result
 
@@ -212,6 +212,8 @@ def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_
             fp += 1
         elif check_result != labels[check_no] and check_result == "Unrelated":
             fn += 1
+        elif check_result not in ["Related", "Unrelated"]:
+            raise RuntimeError(f"Unacceptable binary relation: {check_result}")
 
     total = tp + tn + fp + fn
     accuracy = round(((tp + tn)/total), 2)
@@ -299,7 +301,7 @@ if __name__ == "__main__":
 
     dev_set = load_gs("Gold Standard Dev.pkl")
 
-    print(organise_output(compare_glosses(dev_set, "ED", cutoff_percent=100)))
+    print(organise_output(compare_glosses(dev_set, "ED", cutoff_percent=60)))
     print(organise_output(compare_glosses(dev_set, "LCS", cutoff_percent=82)))
 
     # Select text to embed
