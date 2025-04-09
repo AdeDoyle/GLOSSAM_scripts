@@ -49,7 +49,10 @@ def prep_files(folder_path="default"):
             gloss_soup = BeautifulSoup(gloss_html, 'html.parser')
             gloss_id = gloss_soup.find('note')['n']
             lemma_id = gloss_soup.find('note')['target']
-            gloss_text = gloss_soup.find("gloss").text
+            try:
+                gloss_text = gloss_soup.find("gloss").text
+            except AttributeError:
+                continue
             glosses_data.append([this_file, gloss_id, lemma_id, gloss_text])
 
     # Pair glosses on the same lemma from different manuscripts, and remove all unpaired glosses
@@ -64,7 +67,7 @@ def prep_files(folder_path="default"):
     return prepped
 
 
-def apply_bestmod(folder_path="default", model="default", cutoff="default", llm="default"):
+def apply_bestmod(folder_path="default", model="default", cutoff="default", llm="default", output_filename="default"):
     """Uses the best performing model to perform text similarity analysis on glosses"""
 
     full_gloss_pairs = prep_files(folder_path)
@@ -113,12 +116,33 @@ def apply_bestmod(folder_path="default", model="default", cutoff="default", llm=
         [pair[0][0], pair[0][1], pair[0][3], pair[1][0], pair[1][1], pair[1][3]] for pair in related_glosses
     ]
 
+    if output_filename == "default":
+        if llm == "default":
+            output_filename = f"Related Gloss Output ({model}).xlsx"
+        else:
+            fixed_llm = "_".join(llm.split("/"))
+            fixed_llm = "_".join(fixed_llm.split("\\"))
+            output_filename = f"Related Gloss Output ({fixed_llm}).xlsx"
+    else:
+        output_filename = output_filename + ".xlsx"
+
     df = pd.DataFrame(related_glosses, columns=["Gl. 1 MS", "Gl. 1 no.", "Gloss 1", "Gl. 2 MS", "Gl. 2 no.", "Gloss 2"])
-    df.to_excel(f"Related Gloss Output ({model}).xlsx", index=False)
+    df.to_excel(output_filename, index=False)
 
 
 if __name__ == "__main__":
 
-    apply_bestmod()
-    apply_bestmod(model="ED")
-    apply_bestmod(model="LCS")
+    for model_type in ["ED", "LCS", "LLM"]:
+        if model_type == "LLM":
+            for hf_model in ["Latin", "Medieval Latin"]:
+                if hf_model == "Latin":
+                    lat_mod = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-latin"
+                elif hf_model == "Medieval Latin":
+                    lat_mod = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin"
+                else:
+                    hf_model = "default"
+                    lat_mod = "default"
+                out_file = f"Related Gloss Output ({model_type} - {hf_model})"
+                apply_bestmod(model=model_type, llm=lat_mod, output_filename=out_file)
+        else:
+            apply_bestmod(model=model_type)
