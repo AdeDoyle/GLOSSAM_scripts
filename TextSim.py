@@ -8,6 +8,7 @@ import torch
 from sentence_transformers import SentenceTransformer
 import pickle as pkl
 import os
+import string
 
 
 def norm_ld(s1, s2):
@@ -252,7 +253,7 @@ def organise_output(comparison_data):
     )
 
 
-def save_all_outputs():
+def save_all_outputs(normalise=False):
     """Saves outputs for all models with all potential variables"""
 
     headings = [
@@ -266,6 +267,18 @@ def save_all_outputs():
 
     dev_set = load_gs("Gold Standard Dev.pkl")
 
+    # To normalise the data before testing models remove punctuation, standardise spelling, etc.
+    if normalise:
+        dev_set = [[gd[0].lower(), gd[1].lower(), gd[2]] for gd in dev_set]
+        dev_set = [["u".join(gd[0].split("v")), "u".join(gd[1].split("v")), gd[2]] for gd in dev_set]
+        dev_set = [["i".join(gd[0].split("j")), "i".join(gd[1].split("j")), gd[2]] for gd in dev_set]
+        for punct in [p for p in string.punctuation + "«»"]:
+            dev_set = [["".join(gd[0].split(punct)), "".join(gd[1].split(punct)), gd[2]] for gd in dev_set]
+        dev_set = [[" ".join(gd[0].split("  ")), " ".join(gd[1].split("  ")), gd[2]] for gd in dev_set]
+        normalised = " (Text Normalised)"
+    else:
+        normalised = ""
+
     methods = ["ED", "LCS"]
     for method in methods:
         if method == "ED":
@@ -276,7 +289,7 @@ def save_all_outputs():
 
             # Save to Excel
             os.chdir(os.path.join(main_dir, "Model Outputs"))
-            df.to_excel(f"{method} data.xlsx", index=False)
+            df.to_excel(f"{method} data{normalised}.xlsx", index=False)
             os.chdir(main_dir)
         elif method == "LCS":
             for substring_level in range(5):
@@ -290,9 +303,9 @@ def save_all_outputs():
                 # Save to Excel
                 os.chdir(os.path.join(main_dir, "Model Outputs"))
                 if substring_level == 0:
-                    df.to_excel(f"{method} data - {substring_level + 1} substring.xlsx", index=False)
+                    df.to_excel(f"{method} data - {substring_level + 1} substring{normalised}.xlsx", index=False)
                 elif substring_level > 0:
-                    df.to_excel(f"{method} data - {substring_level + 1} substrings.xlsx", index=False)
+                    df.to_excel(f"{method} data - {substring_level + 1} substrings{normalised}.xlsx", index=False)
                 os.chdir(main_dir)
 
     glosses_to_embed = sorted(list(set(
@@ -321,7 +334,7 @@ def save_all_outputs():
 
         # Save to Excel
         os.chdir(os.path.join(main_dir, "Model Outputs"))
-        df.to_excel(f"{model} data.xlsx", index=False)
+        df.to_excel(f"{model} data{normalised}.xlsx", index=False)
         os.chdir(main_dir)
 
     return "Process complete!"
