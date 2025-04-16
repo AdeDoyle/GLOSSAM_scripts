@@ -1,11 +1,12 @@
 import os
+import string
 from bs4 import BeautifulSoup
 from TextSim import ed_compare, lcs_compare, llm_compare
 from sentence_transformers import SentenceTransformer
 import pandas as pd
 
 
-def prep_files(folder_path="default"):
+def prep_files(folder_path="default", normalise=False):
     """Prepare TEI encoded project files for comparison"""
 
     # Get filenames
@@ -54,6 +55,13 @@ def prep_files(folder_path="default"):
             except AttributeError:
                 continue
             glosses_data.append([this_file, gloss_id, lemma_id, gloss_text])
+    if normalise:
+        glosses_data = [[gd[0], gd[1], gd[2], gd[3].lower()] for gd in glosses_data]
+        glosses_data = [[gd[0], gd[1], gd[2], "u".join(gd[3].split("v"))] for gd in glosses_data]
+        glosses_data = [[gd[0], gd[1], gd[2], "i".join(gd[3].split("j"))] for gd in glosses_data]
+        for punct in [p for p in string.punctuation + "«»"]:
+            glosses_data = [[gd[0], gd[1], gd[2], "".join(gd[3].split(punct))] for gd in glosses_data]
+        glosses_data = [[gd[0], gd[1], gd[2], " ".join(gd[3].split("  "))] for gd in glosses_data]
 
     # Pair glosses on the same lemma from different manuscripts, and remove all unpaired glosses
     gloss_pairs = list()
@@ -67,10 +75,11 @@ def prep_files(folder_path="default"):
     return prepped
 
 
-def apply_bestmod(folder_path="default", model="default", cutoff="default", llm="default", output_filename="default"):
+def apply_bestmod(folder_path="default", model="default", cutoff="default", llm="default", output_filename="default",
+                  include_false=True, normalise=False):
     """Uses the best performing model to perform text similarity analysis on glosses"""
 
-    full_gloss_pairs = prep_files(folder_path)
+    full_gloss_pairs = prep_files(folder_path, normalise=normalise)
     basic_gloss_pairs = [[i[0][3], i[1][3]] for i in full_gloss_pairs]
 
     if model == "default":
@@ -113,24 +122,49 @@ def apply_bestmod(folder_path="default", model="default", cutoff="default", llm=
         if result == "Related":
             related_glosses.append(full_gloss_pairs[result_index])
     related_glosses = [
-        [pair[0][0], pair[0][1], pair[0][3], pair[1][0], pair[1][1], pair[1][3]] for pair in related_glosses
+        [pair[0][0], pair[0][1], pair[0][3], pair[1][0], pair[1][1], pair[1][3], "Related"] for pair in related_glosses
     ]
+
+    output_glosses = related_glosses
+
+    if include_false:
+        unrelated_glosses = list()
+        for result_index, result in enumerate(results):
+            if result == "Unrelated":
+                unrelated_glosses.append(full_gloss_pairs[result_index])
+        unrelated_glosses = [
+            [
+                pair[0][0], pair[0][1], pair[0][3], pair[1][0], pair[1][1], pair[1][3], "Unrelated"
+            ] for pair in unrelated_glosses
+        ]
+        output_glosses = related_glosses + unrelated_glosses
 
     if output_filename == "default":
         if llm == "default":
-            output_filename = f"Related Gloss Output ({model}).xlsx"
+            if normalise:
+                output_filename = f"Related Gloss Output ({model} - Text Normalised).xlsx"
+            else:
+                output_filename = f"Related Gloss Output ({model}).xlsx"
         else:
             fixed_llm = "_".join(llm.split("/"))
             fixed_llm = "_".join(fixed_llm.split("\\"))
-            output_filename = f"Related Gloss Output ({fixed_llm}).xlsx"
+            if normalise:
+                output_filename = f"Related Gloss Output ({fixed_llm} - Text Normalised).xlsx"
+            else:
+                output_filename = f"Related Gloss Output ({fixed_llm}).xlsx"
     else:
         output_filename = output_filename + ".xlsx"
 
-    df = pd.DataFrame(related_glosses, columns=["Gl. 1 MS", "Gl. 1 no.", "Gloss 1", "Gl. 2 MS", "Gl. 2 no.", "Gloss 2"])
+    df = pd.DataFrame(
+        output_glosses, columns=[
+            "Gl. 1 MS", "Gl. 1 no.", "Gloss 1", "Gl. 2 MS", "Gl. 2 no.", "Gloss 2", "Predicted Relationship"
+        ]
+    )
     df.to_excel(output_filename, index=False)
 
 
-if __name__ == "__main__":
+def apply_allmods(include_false=True, normalise=False):
+    """Applies all variants of all models at once, using optimised hyperparameters"""
 
     for model_type in ["ED", "LCS", "LLM"]:
         if model_type == "LLM":
@@ -142,7 +176,16 @@ if __name__ == "__main__":
                 else:
                     hf_model = "default"
                     lat_mod = "default"
-                out_file = f"Related Gloss Output ({model_type} - {hf_model})"
-                apply_bestmod(model=model_type, llm=lat_mod, output_filename=out_file)
+                if normalise:
+                    out_file = f"Related Gloss Output ({model_type} - {hf_model} - Text Normalised)"
+                else:
+                    out_file = f"Related Gloss Output ({model_type} - {hf_model})"
+                apply_bestmod(model=model_type, llm=lat_mod, output_filename=out_file,
+                              include_false=include_false, normalise=normalise)
         else:
-            apply_bestmod(model=model_type)
+            apply_bestmod(model=model_type, include_false=include_false, normalise=normalise)
+
+
+if __name__ == "__main__":
+
+    apply_allmods(include_false=False)

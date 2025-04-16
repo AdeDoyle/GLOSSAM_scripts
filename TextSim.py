@@ -24,7 +24,7 @@ def norm_ld(s1, s2):
     return lev_norm
 
 
-def ed_compare(str1, str2, n=100):
+def ed_compare(str1, str2, n=60):
     """Compares two strings, predicts whether they're related based on edit distance"""
 
     cutoff = n
@@ -57,26 +57,39 @@ def lcs(s1, s2):
     return s1[end_index - max_length:end_index]
 
 
-def slcs(s1, s2):
-    """finds the longest, then the second-longest common substring of two strings"""
+def multi_lcs(s1, s2, num_substrings=2):
+    """finds the longest, then the second-longest, up to the nth longest common substring of two strings"""
 
     lcsubstr = lcs(s1, s2)
+    num_substrings = num_substrings - 1
 
     if lcsubstr:
-        s1_minus = "".join(s1.split(lcsubstr))
-        s2_minus = "".join(s2.split(lcsubstr))
-        slcsubstr = lcs(s1_minus, s2_minus)
+        substrings = [lcsubstr]
+        for n in range(num_substrings):
+            if s1:
+                try:
+                    s1 = "".join(s1.split(substrings[-1]))
+                except ValueError:
+                    s1 = ""
+            if s2:
+                try:
+                    s2 = "".join(s2.split(substrings[-1]))
+                except ValueError:
+                    s2 = ""
+            nthlcsubstr = lcs(s1, s2)
+            substrings.append(nthlcsubstr)
     else:
-        slcsubstr = ""
+        substrings = [""]
 
-    return lcsubstr, slcsubstr
+    return substrings
 
 
-def lcs_compare(s1, s2, n=82):
+def lcs_compare(s1, s2, n=82, num_substrings=2):
     """Compares two strings, predicts whether they're related based on longest (and 2nd longest) common substring"""
 
-    lcs1, lcs2 = slcs(s1, s2)
-    combo_lcs = len(lcs1) + len(lcs2)
+    lcs_list = multi_lcs(s1, s2, num_substrings)
+    lcs_lengths = [len(i) for i in lcs_list]
+    combo_lcs = sum(lcs_lengths)
 
     len_s1, len_s2 = len(s1), len(s2)
     min_len = min(len_s1, len_s2)
@@ -163,7 +176,7 @@ def load_cluster_plot(file_name="Scatter Plot.pkl"):
     return file_loaded
 
 
-def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_percent=None):
+def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_percent=None, num_substrings=2):
     """
     Compares two sets of glosses, predicts whether each gloss is related or unrelated
     Scores predictions by comparison to known correct labels to calculate Accuracy, precision, recall and f-measure
@@ -178,7 +191,7 @@ def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_
             results = [ed_compare(g[0], g[1], cutoff_percent) for g in glosses]
         # If using the longest common substring method
         elif method == "LCS":
-            results = [lcs_compare(g[0], g[1], cutoff_percent) for g in glosses]
+            results = [lcs_compare(g[0], g[1], cutoff_percent, num_substrings) for g in glosses]
         # If using a large language model method
         elif method == "LLM":
             results = [llm_compare(g[0], g[1], gloss_vec_mapping, model, cutoff_percent) for g in glosses]
@@ -191,7 +204,7 @@ def compare_glosses(glosses, method, gloss_vec_mapping=None, model=None, cutoff_
             results = [ed_compare(g[0], g[1]) for g in glosses]
         # If using the longest common substring method
         elif method == "LCS":
-            results = [lcs_compare(g[0], g[1]) for g in glosses]
+            results = [lcs_compare(g[0], g[1], num_substrings) for g in glosses]
         # If using a large language model method
         elif method == "LLM":
             results = [llm_compare(g[0], g[1], gloss_vec_mapping, model) for g in glosses]
@@ -255,15 +268,32 @@ def save_all_outputs():
 
     methods = ["ED", "LCS"]
     for method in methods:
-        data = headings + [compare_glosses(dev_set, method, cutoff_percent=i) for i in range(101)]
+        if method == "ED":
+            data = headings + [compare_glosses(dev_set, method, cutoff_percent=i) for i in range(101)]
 
-        # Convert to DataFrame
-        df = pd.DataFrame(data[1:], columns=data[0])
+            # Convert to DataFrame
+            df = pd.DataFrame(data[1:], columns=data[0])
 
-        # Save to Excel
-        os.chdir(os.path.join(main_dir, "Model Outputs"))
-        df.to_excel(f"{method} data.xlsx", index=False)
-        os.chdir(main_dir)
+            # Save to Excel
+            os.chdir(os.path.join(main_dir, "Model Outputs"))
+            df.to_excel(f"{method} data.xlsx", index=False)
+            os.chdir(main_dir)
+        elif method == "LCS":
+            for substring_level in range(5):
+                data = headings + [compare_glosses(
+                    dev_set, method, cutoff_percent=i, num_substrings=substring_level+1
+                ) for i in range(101)]
+
+                # Convert to DataFrame
+                df = pd.DataFrame(data[1:], columns=data[0])
+
+                # Save to Excel
+                os.chdir(os.path.join(main_dir, "Model Outputs"))
+                if substring_level == 0:
+                    df.to_excel(f"{method} data - {substring_level + 1} substring.xlsx", index=False)
+                elif substring_level > 0:
+                    df.to_excel(f"{method} data - {substring_level + 1} substrings.xlsx", index=False)
+                os.chdir(main_dir)
 
     glosses_to_embed = sorted(list(set(
         [g[0] for g in dev_set] + [g[1] for g in dev_set]

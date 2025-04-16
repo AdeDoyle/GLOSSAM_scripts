@@ -77,6 +77,11 @@ If you would like to run an LLM model other than the one found to be optimised f
     model_link = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin"
     apply_bestmod(model="LLM", llm=model_link)
 
+It is also possible to run all available models at once, with optimised parameters for each model type, like so:
+
+    from Apply_models import apply_allmods
+    apply_allmods()
+
 # Detailed Description of Files and Functions
 
 This section is intended to support users who want to adjust hyperparameters of models, or otherwise interact on a deeper level with the GLOSSAM code pipeline.
