@@ -21,20 +21,21 @@ def norm_ld(s1, s2):
     max_dif = max(l1, l2)  # Find the length of the larger of the two strings (this is the max possible edit distance)
 
     lev_norm = (lev_dist/max_dif)*100  # Normalise the edit distance, then render as a percentage of difference
+    lev_norm = 100 - lev_norm  # Invert the output to make it a similarity percentage instead of a difference percentage
 
     return lev_norm
 
 
-def ed_compare(str1, str2, n=60):
+def ed_compare(str1, str2, n=46):
     """Compares two strings, predicts whether they're related based on edit distance"""
 
     cutoff = n
 
     lev_norm = norm_ld(str1, str2)
-    if lev_norm > cutoff:
-        result = "Unrelated"
-    else:
+    if lev_norm >= cutoff:
         result = "Related"
+    else:
+        result = "Unrelated"
 
     return result
 
@@ -95,12 +96,10 @@ def lcs_compare(s1, s2, n=82, num_substrings=2):
     len_s1, len_s2 = len(s1), len(s2)
     min_len = min(len_s1, len_s2)
 
-    if n == 0:
-        cutoff = 0
-    else:
-        cutoff = min_len*(n/100)
+    lcs_score = combo_lcs/min_len
+    cutoff = n/100
 
-    if combo_lcs >= cutoff:
+    if lcs_score >= cutoff:
         result = "Related"
     else:
         result = "Unrelated"
@@ -344,7 +343,7 @@ if __name__ == "__main__":
 
     dev_set = load_gs("Gold Standard Dev.pkl")
 
-    print(organise_output(compare_glosses(dev_set, "ED", cutoff_percent=60)))
+    print(organise_output(compare_glosses(dev_set, "ED", cutoff_percent=46)))
     print(organise_output(compare_glosses(dev_set, "LCS", cutoff_percent=82)))
 
     # Select text to embed
