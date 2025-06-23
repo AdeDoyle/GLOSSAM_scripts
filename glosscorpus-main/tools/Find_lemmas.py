@@ -26,19 +26,22 @@ def find_lems():
     Where it is not possible to find the correct lemma, it marks the lemma as unknown.
     """
 
-    # Search for tokenised .xml files in the base-texts directory
+    # Search for tokenised (!!!) .xml files in the base-texts directory
     base_files = {}
-    base_path = os.path.join(os.getcwd(), "basetexts")
-    if os.path.isdir(base_path):  # Check if it's a directory
-        for filename in fnmatch.filter(os.listdir(base_path), '*.xml'):
-            if "_tokenised.xml" in filename:
-                file_path = os.path.join(base_path, filename)
-                if os.path.isfile(file_path):
-                    base_files[filename[:filename.find("_tokenised.xml")]] = file_path
-                else:
-                    raise RuntimeError(f"Could not find file path: {file_path}")
+    tools_dir = os.getcwd()
+    tools_parent = os.path.dirname(tools_dir)
+    texts_dir = os.path.join(tools_parent, "data", "texts")
+    if os.path.isdir(texts_dir):  # Check if it's a directory
+        base_texts = os.listdir(texts_dir)
+        for base_txt in base_texts:  # Need to find a way to test that base files have already been tokenised (!!!)
+            txt_dir = os.path.join(texts_dir, base_txt)
+            base_txt_path = os.path.join(txt_dir, "basetext.xml")
+            if os.path.isfile(base_txt_path):
+                base_files[base_txt] = base_txt_path
+            else:
+                raise RuntimeError(f"Could not find file path: {base_txt_path}")
 
-    # For each .xml file found in the first-level subdirectories
+    # For each base-text .xml file found
     for basefile in base_files:
 
         # Open and read the content of the base-text .xml file
