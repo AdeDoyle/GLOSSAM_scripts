@@ -1,5 +1,4 @@
 import os
-import fnmatch
 import re
 import string
 from nltk import wordpunct_tokenize as tze
@@ -7,28 +6,32 @@ from nltk import wordpunct_tokenize as tze
 
 def id_tokens():
     """
-    Searches for all .xml files in the first-level subdirectories of the directory this .py file is placed in,
-    tokenises text content of found .xml files,
-    and creates a copy of the file within the correct subdirectory with all words separated using <w> tags.
+    Searches for all base-text files and tokenises their contents, tagging and numbering each word.
 
-    Each separated, tagged word is supplied with a unique identifier based on its section ID.
+    Creates an annotated copy of the file within the same directory as the original files..
     """
 
     # Search for .xml files in the base-texts directory
-    xml_files = []
-    subdirectory_path = os.path.join(os.getcwd(), "basetexts")
-    if os.path.isdir(subdirectory_path):  # Check if it's a directory
-        for filename in fnmatch.filter(os.listdir(subdirectory_path), '*.xml'):
-            if "_tokenised" not in filename:
-                file_path = os.path.join(subdirectory_path, filename)
-                if os.path.isfile(file_path):
-                    xml_files.append(file_path)
+    xml_files = {}
+    tools_dir = os.getcwd()
+    tools_parent = os.path.dirname(tools_dir)
+    texts_dir = os.path.join(tools_parent, "data", "texts")
+    if os.path.isdir(texts_dir):  # Check if it's a directory
+        base_texts = os.listdir(texts_dir)
+        for base_txt in base_texts:
+            txt_dir = os.path.join(texts_dir, base_txt)
+            base_txt_path = os.path.join(txt_dir, "basetext.xml")
+            if "_tokenised" not in base_txt_path:  # Need better way to ensure base-texts not already tokenised (!!!)
+                if os.path.isfile(base_txt_path):
+                    xml_files[base_txt] = base_txt_path
+                else:
+                    raise RuntimeError(f"Could not find file path: {base_txt_path}")
 
     # For each .xml file found in the base-texts directory
     for old_xml in xml_files:
 
         # Open and read the content of the .xml file
-        with open(old_xml, 'r', encoding="utf-8") as xml_file:
+        with open(xml_files.get(old_xml), 'r', encoding="utf-8") as xml_file:
             content = xml_file.read()
 
         # Isolate the text content
@@ -41,7 +44,13 @@ def id_tokens():
             tagset.append(text_content[istart:iend])
 
         # Split the .xml file into substrings of tags and text between tags
+        # This for-loop can take a particularly long time to run (e.g. on Priscian)
         textlist = []
+        original_len = len(text_content)
+        percent_divisor = 100/original_len
+        percent_complete = 0
+        if original_len >= 500000:
+            print(f"Long for-loop in progress:\n    100% remaining.")
         for tag_no, found_tag in enumerate(tagset):
             find_pos = text_content.find(found_tag)
 
@@ -64,6 +73,15 @@ def id_tokens():
             if tag_no + 1 == len(tagset):
                 if text_content:
                     textlist.append(text_content)
+
+            if original_len >= 500000:
+                percent_left = len(text_content)*percent_divisor
+                exact_complete = 100-percent_left
+                if exact_complete >= percent_complete + 0.1:
+                    percent_complete += 0.1
+                    print(f"    {round(percent_left, 2)}% remaining.")
+                elif exact_complete >= 100:
+                    print(f"    0% remaining.")
 
         # Iterate through the list of substrings, ignoring substrings containing tags
         ptlist = []
@@ -171,7 +189,6 @@ def id_tokens():
         # Look for substrings containing text and tokenise it
         tok_list = []
         segment_id = "null"
-        ignore_last_tag = False
         for stripped_item in strip_list:
 
             # If the item is an xml tag
@@ -281,9 +298,8 @@ def id_tokens():
         )
 
         # Create a new file path with "_tokenised" appended to the filename
-        directory, filename = os.path.split(old_xml)
-        new_filename = os.path.splitext(filename)[0] + '_tokenised.xml'
-        new_file_path = os.path.join(directory, new_filename)
+        directory = os.path.join(texts_dir, old_xml)
+        new_file_path = os.path.join(directory, 'basetext_tokenised.xml')  # Need better way to show base-texts tokenised (!!!)
 
         # Save the modified content to the new file path
         with open(new_file_path, 'w', encoding="utf-8") as new_file:
