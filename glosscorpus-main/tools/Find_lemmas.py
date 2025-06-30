@@ -18,7 +18,7 @@ def norm_ld(s1, s2):
     return lev_norm
 
 
-def find_lems():
+def find_lems(verbose=False):
     """
     Searches for all tokenised .xml files in the first-level subdirectories of the directory this .py file is placed in,
     and links individual glosses to the lemmata.
@@ -26,16 +26,16 @@ def find_lems():
     Where it is not possible to find the correct lemma, it marks the lemma as unknown.
     """
 
-    # Search for tokenised (!!!) .xml files in the base-texts directory
+    # Search for tokenised .xml files in the base-texts directory
     base_files = {}
     tools_dir = os.getcwd()
     tools_parent = os.path.dirname(tools_dir)
     texts_dir = os.path.join(tools_parent, "data", "texts")
     if os.path.isdir(texts_dir):  # Check if it's a directory
         base_texts = os.listdir(texts_dir)
-        for base_txt in base_texts:  # Need to find a way to test that base files have already been tokenised (!!!)
+        for base_txt in base_texts:
             txt_dir = os.path.join(texts_dir, base_txt)
-            base_txt_path = os.path.join(txt_dir, "basetext.xml")
+            base_txt_path = os.path.join(txt_dir, "basetext_tokenised.xml")  # Need better solution (!!!)
             if os.path.isfile(base_txt_path):
                 base_files[base_txt] = base_txt_path
             else:
@@ -43,6 +43,8 @@ def find_lems():
 
     # For each base-text .xml file found
     for basefile in base_files:
+        if verbose:
+            print(f"Working on base-text:\n    {basefile}")
 
         # Open and read the content of the base-text .xml file
         with open(base_files.get(basefile), 'r', encoding="utf-8") as base_xml_file:
@@ -51,55 +53,36 @@ def find_lems():
 
         # Collect paths to gloss collections' locations
         gloss_collections = []
-        gloss_path = os.path.join(os.getcwd(), "collections")
-        if os.path.isdir(gloss_path):  # Check if it's a directory
-            for foldername in os.listdir(gloss_path):
-                this_gloss_path = os.path.join(gloss_path, foldername)
-                if os.path.isdir(this_gloss_path):  # Check if it's a directory
-                    for filename in fnmatch.filter(os.listdir(this_gloss_path), '*.xml'):
-                        if "_lemmatised" not in filename:
-                            gloss_file_path = os.path.join(this_gloss_path, filename)
-                            if os.path.isfile(gloss_file_path):
-                                gloss_collections.append(gloss_file_path)
-                            else:
-                                raise RuntimeError(f"Could not find file path: {gloss_file_path}")
-                else:
-                    raise RuntimeError(f"Could not find file path: {this_gloss_path}")
+        glosses_path = os.path.join(texts_dir, basefile, "gloss_collections")
+        if os.path.isdir(glosses_path):  # Check if it's a directory
+            for filename in fnmatch.filter(os.listdir(glosses_path), '*.xml'):
+                if "_lemmatised" not in filename:  # Need better solution to ensure files not already lemmtised (!!!)
+                    gloss_file_path = os.path.join(glosses_path, filename)
+                    if os.path.isfile(gloss_file_path):
+                        gloss_collections.append(gloss_file_path)
+                    else:
+                        raise RuntimeError(f"Could not find file path: {gloss_file_path}")
+        else:
+            raise RuntimeError(f"Could not find file path: {glosses_path}")
 
         # For each collection of glosses found
         for gloss_file in gloss_collections:
+            if verbose:
+                print(f"  Currently annotating:\n    {gloss_file}")
 
             # Open and read the content of the xml file
             with open(gloss_file, 'r', encoding="utf-8") as gloss_xml_file:
                 gloss_content = gloss_xml_file.read()
 
-            # Determine the base-text to which this collection relates
-            match_name = gloss_content[gloss_content.find("xml:base=") + 10:]
-            match_name = match_name[:match_name.find("\n") - 1]
-            match_name = match_name[match_name.rfind("basetexts") + 10:match_name.rfind(".xml")]
+            # Isolate the text content between the <body> tags
+            gloss_content_text = gloss_content[
+                                 gloss_content.find("<body>"):gloss_content.find("</body>") + len("</body>")
+                                 ]
 
-            # If the current base-text is not a match for the base-text identified in this gloss collection, move on
-            if match_name != basefile:
-                continue
-            # Otherwise, isolate the text content between the <body> tags
-            else:
-                gloss_content_text = gloss_content[
-                                     gloss_content.find("<body>"):gloss_content.find("</body>") + len("</body>")
-                                     ]
-
-            # This section is for testing only. It eliminates all non-test collections. Remove after testing.
-            select_collections = [
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\E BK1.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\K BK1.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\L BK1.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\f2.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\f3.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\f5.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\g.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\G - Mary.xml",
-                "C:\\Users\\admd9\\PycharmProjects\\GLOSSAM_scripts\\collections\\priscian\\j.xml"
-            ]
-            if match_name != "priscian" or gloss_file not in select_collections:
+            # If no lemmata are tagged in the edition, skip over it
+            if "</term>" not in gloss_content_text:
+                if verbose:
+                    print(f"  No lemmata found in edition; abandoning attempt.\n")
                 continue
 
             # Before beginning, remove any nested <note> tags (type="editorial" or type="translation")
@@ -137,21 +120,40 @@ def find_lems():
             cur_seg_id = ""
             cur_tok_no = None
 
-            # For each <note> tag in the text (i.e. for each lemma identified in the text)
+            original_len = len(gloss_tags)
+            percent_divisor = 100 / original_len
+            percent_left = 100
+
+            # For each </note> tag in the text (i.e. for each gloss identified in the text)
+            if verbose:
+                print(f"  Found {original_len} glosses in this file.\n    Assigning glosses to lemmata:")
             for tag_no, found_tag in enumerate(gloss_tags):
+
+                if verbose:
+                    percent_complete = tag_no * percent_divisor
+                    exact_left = 100 - percent_complete
+                    if exact_left == 100:
+                        print(f"    {exact_left}% remaining.")
+                    elif exact_left <= percent_left - 0.1:
+                        percent_left = round(exact_left, 1)
+                        print(f"    {percent_left}% remaining.")
+                    elif exact_left <= 0:
+                        print(f"    0% remaining.")
+
                 find_pos = reduce_text.find(found_tag)
                 end_pos = reduce_text[find_pos:].find("</note>") + len("</note>") + find_pos
                 found_gloss = reduce_text[find_pos:end_pos]
 
                 # If no lemma is identified by a gloss
-                if found_gloss.count("<term>") == 0:
+                if found_gloss.count("</term>") == 0:
                     fg_lemma = "No Lemma Tagged for Gloss"
-                    ft_lemRef = ""
+                    target_lem_id = ""
 
                 # If one or more lemmata are identified by a gloss
                 else:
                     # Isolate the lemma identified by the gloss
-                    fg_lemma = found_gloss[found_gloss.find("<term>") + len("<term>"):found_gloss.find("</term>")]
+                    fg_lemma = found_gloss[found_gloss.find("<term") + len("<term"):found_gloss.find("</term>")]
+                    fg_lemma = fg_lemma[fg_lemma.find(">") + 1:]
                     # Remove undesirable characters and tags from the identified lemma
                     fg_lemma = "".join(fg_lemma.split("["))
                     fg_lemma = "".join(fg_lemma.split("]"))
@@ -174,20 +176,32 @@ def find_lems():
                     fg_lemma = fg_lemma.lower()
 
                     # Isolate the target line in the base-text identified by the gloss
-                    ft_lemRef = found_tag[found_tag.find('target="'):]
-                    ft_lemRef = 'xml:id="' + ft_lemRef[:ft_lemRef.find('"', ft_lemRef.find('"') + 1) + 1][9:]
+                    target_lem_id = found_tag[found_tag.find('target="'):]
+                    target_lem_id = 'xml:id="' + target_lem_id[:target_lem_id.find(
+                        '"', target_lem_id.find('"') + 1
+                    ) + 1][9:]
 
                 # If this is a second, third, etc. gloss on a base-text segment referenced already by an earlier gloss
-                if cur_seg_id == ft_lemRef[len('xml:id="'):-1]:
+                if cur_seg_id and cur_seg_id == target_lem_id[len('xml:id="'):-1]:
                     new_base_segment = False
                 # If this is a new base-text segment, update the current segment identifier
                 else:
                     new_base_segment = True
-                    cur_seg_id = ft_lemRef[len('xml:id="'):-1]
+                    if target_lem_id:
+                        cur_seg_id = target_lem_id[len('xml:id="'):-1]
+                    else:
+                        cur_seg_id = ""
 
                 # Using the target found above, find the correct text segment in the base-text
-                lemma_line = base_content_text[base_content_text.find(ft_lemRef) + len(ft_lemRef):]
-                lemma_line = lemma_line[lemma_line.find("<w "):lemma_line.find("</ab>")]
+                lemma_line = base_content_text[base_content_text.find(target_lem_id) + len(target_lem_id):]
+                # Find tokenised words in the segment
+                lemma_line_words = lemma_line[lemma_line.find("<w "):lemma_line.find("</ab>")]
+                if lemma_line and not lemma_line_words:
+                    raise RuntimeError(f"Search for tokens resulted in loss of base-text data. "
+                                       f"This may indicate the base-text hasn't been word-separated, or that a problem "
+                                       f"exists within the edition file (e.g., lemmata not being tagged properly).\n"
+                                       f"Problem file:\n    {gloss_file}\nProblem gloss:\n    {found_tag}\n"
+                                       f"No words found for line:\n    {lemma_line}")
                 # Replace abbreviations with full forms in the text segment
                 lemma_line = "et".join(lemma_line.split("⁊"))
                 # Split the text segment into separate words
@@ -225,8 +239,8 @@ def find_lems():
                 lemma_note = None
 
                 # If no corresponding text segment can be found in the base-text
-                if ft_lemRef and not lemma_line:
-                    lemma_note = f"<!-- re-examine: No line with ID {ft_lemRef} occurs in the base-text -->"
+                if target_lem_id and not lemma_line:
+                    lemma_note = f"<!-- re-examine: No line with ID {target_lem_id} occurs in the base-text -->"
 
                 # If no <term></term> tags occur within the gloss
                 elif fg_lemma == "No Lemma Tagged for Gloss":
