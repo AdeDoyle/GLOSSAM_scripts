@@ -7,10 +7,15 @@ def open_xml(file_name):
 
     file_name = file_name + ".xml"
     cur_dir = os.getcwd()
-    if file_name in os.listdir(cur_dir):
-        file_path = os.path.join(cur_dir, file_name)
+    gold_dir = os.path.join(cur_dir, "similarity_models", "gold_data")
+    if not os.path.isdir("similarity_models"):
+        os.mkdir("similarity_models")
+    if not os.path.isdir(gold_dir):
+        os.mkdir(gold_dir)
+    if file_name in os.listdir(gold_dir):
+        file_path = os.path.join(gold_dir, file_name)
     else:
-        raise RuntimeError(f"No file named {file_name} appears in the current directory.")
+        raise RuntimeError(f"No file named {file_name} appears in the directory {gold_dir}.")
 
     with open(file_path, 'r', encoding="utf-8") as xml_file:
         xml_content = xml_file.read()
@@ -123,13 +128,17 @@ def get_xml_glosses(file_name):
     gold_xml = open_xml(file_name)
 
     # Isolate relevant text contents from XML file
-    text_range = gold_xml[gold_xml.find("<hi:listGlossGrp>"):gold_xml.find("</hi:listGlossGrp>") + len("</hi:listGlossGrp>")]
+    text_range = gold_xml[
+                 gold_xml.find("<hi:listGlossGrp>"):gold_xml.find("</hi:listGlossGrp>") + len("</hi:listGlossGrp>")
+                 ]
 
     # Add each gloss grouping to a list of gloss groups
     group_list = list()
     text_reduce = text_range[:]
     for _ in range(text_range.count("</hi:glossGrp>")):
-        gloss_group = text_reduce[text_reduce.find("<hi:glossGrp "):text_reduce.find("</hi:glossGrp>") + len("</hi:glossGrp>")]
+        gloss_group = text_reduce[
+                      text_reduce.find("<hi:glossGrp "):text_reduce.find("</hi:glossGrp>") + len("</hi:glossGrp>")
+                      ]
         group_list.append(gloss_group)
         text_reduce = text_reduce[text_reduce.find("</hi:glossGrp>") + len("</hi:glossGrp>"):]
 
@@ -211,9 +220,6 @@ def gen_gs(development_set=True, verbose=True):
 
     :return:
     """
-
-    # Get lemmata
-    # gold_xml_lemmata = get_xml_lemmata("Isidore_Gold")
 
     # Get glosses
     gold_gloss_data = get_xml_glosses("Isidore_Gold")
@@ -321,8 +327,11 @@ def gen_gs(development_set=True, verbose=True):
     # Remove any null text values form the test set
     test_set = [i for i in test_set if i[0] and i[1]]
 
+    cur_dir = os.getcwd()
+    gold_dir = os.path.join(cur_dir, "similarity_models", "gold_data")
+
     # Save the test set to a PKL file
-    with open('Gold Standard Test.pkl', 'wb') as testfile:
+    with open(os.path.join(gold_dir, 'Gold Standard Test.pkl'), 'wb') as testfile:
         pkl.dump(test_set, testfile)
 
     if development_set:
@@ -331,17 +340,20 @@ def gen_gs(development_set=True, verbose=True):
         dev_set = [i for i in dev_set if i[0] and i[1]]
 
         # Save the test set to a PKL file
-        with open('Gold Standard Dev.pkl', 'wb') as devfile:
+        with open(os.path.join(gold_dir, 'Gold Standard Dev.pkl'), 'wb') as devfile:
             pkl.dump(dev_set, devfile)
 
 
-def load_gs(pkl_file):
+def load_gs(gs_file):
     """
     Load saved PKL files
     """
 
+    cur_dir = os.getcwd()
+    gold_dir = os.path.join(cur_dir, "similarity_models", "gold_data")
+
     # Loading the PKL file
-    with open(pkl_file, 'rb') as loadfile:
+    with open(os.path.join(gold_dir, gs_file), 'rb') as loadfile:
         file_loaded = pkl.load(loadfile)
 
     return file_loaded
