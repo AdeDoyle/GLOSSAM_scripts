@@ -163,8 +163,16 @@ def llm_compare(gloss_1, gloss_2, gloss_vec_mapping, model, n=50):
 
 def save_cluster_plot(fig, file_name="Scatter Plot"):
     """Saves a scatter plot generated using the plot_clusters() function as a pickle file"""
+
+    main_dir = os.getcwd()
+    outputs_dir = os.path.join(main_dir, "similarity_models", "scatter_plots")
+    if not os.path.isdir("similarity_models"):
+        os.mkdir("similarity_models")
+    if not os.path.isdir(outputs_dir):
+        os.mkdir(outputs_dir)
+
     file_name = file_name + ".pkl"
-    with open(file_name, 'wb') as spl:
+    with open(os.path.join(outputs_dir, file_name), 'wb') as spl:
         pkl.dump(fig, spl)
 
 
@@ -261,8 +269,11 @@ def save_all_outputs(normalise=False):
     ]
 
     main_dir = os.getcwd()
-    if not os.path.isdir("Model Outputs"):
-        os.mkdir("Model Outputs")
+    outputs_dir = os.path.join(main_dir, "similarity_models", "models_scores")
+    if not os.path.isdir("similarity_models"):
+        os.mkdir("similarity_models")
+    if not os.path.isdir(outputs_dir):
+        os.mkdir(outputs_dir)
 
     dev_set = load_gs("Gold Standard Dev.pkl")
 
@@ -287,7 +298,7 @@ def save_all_outputs(normalise=False):
             df = pd.DataFrame(data[1:], columns=data[0])
 
             # Save to Excel
-            os.chdir(os.path.join(main_dir, "Model Outputs"))
+            os.chdir(outputs_dir)
             df.to_excel(f"{method} data{normalised}.xlsx", index=False)
             os.chdir(main_dir)
         elif method == "LCS":
@@ -300,7 +311,7 @@ def save_all_outputs(normalise=False):
                 df = pd.DataFrame(data[1:], columns=data[0])
 
                 # Save to Excel
-                os.chdir(os.path.join(main_dir, "Model Outputs"))
+                os.chdir(outputs_dir)
                 if substring_level == 0:
                     df.to_excel(f"{method} data - {substring_level + 1} substring{normalised}.xlsx", index=False)
                 elif substring_level > 0:
@@ -332,7 +343,7 @@ def save_all_outputs(normalise=False):
         df = pd.DataFrame(data[1:], columns=data[0])
 
         # Save to Excel
-        os.chdir(os.path.join(main_dir, "Model Outputs"))
+        os.chdir(outputs_dir)
         df.to_excel(f"{model} data{normalised}.xlsx", index=False)
         os.chdir(main_dir)
 
