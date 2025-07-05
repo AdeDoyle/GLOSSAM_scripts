@@ -22,7 +22,8 @@ def prep_files(normalise=False):
         text_path = os.path.join(texts_dir, text)
         collections_path = os.path.join(text_path, "gloss_collections")
         for gloss_coll in os.listdir(collections_path):
-            gloss_collections.append(os.path.join(collections_path, gloss_coll))
+            if "_lemmatised.xml" in gloss_coll:
+                gloss_collections.append(os.path.join(collections_path, gloss_coll))
 
     # Get gloss collection data for each base text, and add each separately to a dictionary
     texts_dict = dict()
@@ -31,6 +32,8 @@ def prep_files(normalise=False):
         for filename in gloss_collections:
             # Load files and add text (between text tags) for each collection to a list
             if filename.startswith('.'):
+                continue
+            elif "_lemmatised.xml" not in filename:
                 continue
             elif text in filename:
                 with open(filename, 'r', encoding="utf-8") as loadfile:
@@ -110,18 +113,23 @@ def apply_bestmod(model="default", cutoff="default", llm="default", output_filen
 
         if model == "ED":
             if cutoff == "default":
-                cutoff = 60
+                cutoff = 41
             results = [ed_compare(g[0], g[1], cutoff) for g in basic_gloss_pairs]
 
         elif model == "LCS":
             if cutoff == "default":
-                cutoff = 82
+                cutoff = 81
             results = [lcs_compare(g[0], g[1], cutoff) for g in basic_gloss_pairs]
 
         elif model == "LLM":
 
             if cutoff == "default":
-                cutoff = 55
+                if llm in ["default", "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-latin"]:
+                    cutoff = 54
+                elif llm == "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-medieval-latin":
+                    cutoff = 49
+                else:
+                    raise RuntimeError("Cutoff must be specified for LLM models")
             if llm == "default":
                 model_used = "silencesys/paraphrase-xlm-r-multilingual-v1-fine-tuned-for-latin"
             else:
@@ -195,6 +203,7 @@ def apply_allmods(include_false=True, normalise=False):
     """Applies all variants of all models at once, using optimised hyperparameters"""
 
     for model_type in ["ED", "LCS", "LLM"]:
+        cutoff = "default"
         if model_type == "LLM":
             for hf_model in ["Latin", "Medieval Latin"]:
                 if hf_model == "Latin":
@@ -208,7 +217,7 @@ def apply_allmods(include_false=True, normalise=False):
                     out_file = f"Paired Glossses for *base_text_name* ({model_type} - {hf_model} - Text Normalised)"
                 else:
                     out_file = f"Paired Glossses for *base_text_name* ({model_type} - {hf_model})"
-                apply_bestmod(model=model_type, llm=lat_mod, output_filename=out_file,
+                apply_bestmod(model=model_type, cutoff=cutoff, llm=lat_mod, output_filename=out_file,
                               include_false=include_false, normalise=normalise)
         else:
             apply_bestmod(model=model_type, include_false=include_false, normalise=normalise)

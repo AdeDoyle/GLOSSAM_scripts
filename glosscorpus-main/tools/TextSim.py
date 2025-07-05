@@ -26,7 +26,7 @@ def norm_ld(s1, s2):
     return lev_norm
 
 
-def ed_compare(str1, str2, n=46):
+def ed_compare(str1, str2, n=41):
     """Compares two strings, predicts whether they're related based on edit distance"""
 
     cutoff = n
@@ -86,7 +86,7 @@ def multi_lcs(s1, s2, num_substrings=2):
     return substrings
 
 
-def lcs_compare(s1, s2, n=82, num_substrings=2):
+def lcs_compare(s1, s2, n=81, num_substrings=2):
     """Compares two strings, predicts whether they're related based on longest (and 2nd longest) common substring"""
 
     lcs_list = multi_lcs(s1, s2, num_substrings)
@@ -142,7 +142,7 @@ def plot_clusters(sentences, embeddings, clustered_embeddings, plot_name="Latin 
     return fig
 
 
-def llm_compare(gloss_1, gloss_2, gloss_vec_mapping, model, n=50):
+def llm_compare(gloss_1, gloss_2, gloss_vec_mapping, model, n=54):
     """Compares two glosses, predicts whether they're related based on semantic similarity"""
 
     similarity_score = model.similarity(gloss_vec_mapping.get(gloss_1), gloss_vec_mapping.get(gloss_2))
@@ -354,8 +354,8 @@ if __name__ == "__main__":
 
     dev_set = load_gs("Gold Standard Dev.pkl")
 
-    print(organise_output(compare_glosses(dev_set, "ED", cutoff_percent=46)))
-    print(organise_output(compare_glosses(dev_set, "LCS", cutoff_percent=82)))
+    print(organise_output(compare_glosses(dev_set, "ED", cutoff_percent=41)))
+    print(organise_output(compare_glosses(dev_set, "LCS", cutoff_percent=81)))
 
     # Select text to embed
     glosses_to_embed = sorted(list(set(
@@ -373,7 +373,7 @@ if __name__ == "__main__":
     for gloss_index, gloss in enumerate(glosses_to_embed):
         gloss_dict[gloss] = embedded_sentences[gloss_index]
 
-    print(organise_output(compare_glosses(dev_set, "LLM", gloss_dict, llm, 55)))
+    print(organise_output(compare_glosses(dev_set, "LLM", gloss_dict, llm, 54)))
 
     # Create a plot from the development set
     clusters = apply_clustering(embedded_sentences, "KMeans", 6)
