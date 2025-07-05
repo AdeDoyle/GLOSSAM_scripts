@@ -260,7 +260,7 @@ def gen_gs(development_set=True, verbose=True):
     for lemma_id in ml_id_set:
         this_gl_group = list()
         for gl_id in multi_lemma_gloss_ids:
-            if gl_id[:gl_id.find("_")] ==  lemma_id:
+            if gl_id[:gl_id.find("_")] == lemma_id:
                 this_gl_group.append(gl_id)
         unrelated_gl_groups.append(this_gl_group)
     # Split gloss groups into pairs glosses which share a single lemma
