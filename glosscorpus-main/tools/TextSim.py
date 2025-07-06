@@ -96,7 +96,10 @@ def lcs_compare(s1, s2, n=81, num_substrings=2):
     len_s1, len_s2 = len(s1), len(s2)
     min_len = min(len_s1, len_s2)
 
-    lcs_score = combo_lcs/min_len
+    if min_len == 0:
+        lcs_score = 0
+    else:
+        lcs_score = combo_lcs/min_len
     cutoff = n/100
 
     if lcs_score >= cutoff:

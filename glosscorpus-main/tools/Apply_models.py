@@ -7,7 +7,18 @@ import pandas as pd
 
 
 def prep_files(normalise=False):
-    """Prepare contents of TEI encoded gloss collection files for comparison using models"""
+    """
+        Prepare contents of TEI encoded gloss collection files for comparison using models
+
+        Output's a dictionary: {'text_name': [list of gloss pairs], 'text_name': [list of gloss pairs], ...}
+        Lists of gloss pairs in the format: [[[gl_1 info][gl_2 info]], [[gl_1 info][gl_2 info]], ...]
+        Gloss info for gl_1 and gl_2 is in the format: ['file_name', 'gloss_ID', 'lemma_id', 'gloss_text']
+
+        e.g. {'priscian': [[['r1_lemmatised', '11v19 nn', '#II_28.7__7', 'solus'],
+                            ['f3_lemmatised', '13b36 z', '#II_28.7__7', 'Greca']],
+                           [['r1_lemmatised', '11v19 nn1', '#II_28.7__7', '.oros. mons uel uisio'],
+                            ['f3_lemmatised', '13b36 z', '#II_28.7__7', 'Greca']], ...]}
+    """
 
     # Map Directories
     tools_dir = os.getcwd()
@@ -80,6 +91,24 @@ def prep_files(normalise=False):
             for punct in [p for p in string.punctuation + "«»"]:
                 glosses_data = [[gd[0], gd[1], gd[2], "".join(gd[3].split(punct))] for gd in glosses_data]
             glosses_data = [[gd[0], gd[1], gd[2], " ".join(gd[3].split("  "))] for gd in glosses_data]
+
+        # Replace null glosses with empty strings
+        glosses_data = [gd if not pd.isnull(gd[3]) else [gd[0], gd[1], gd[2], ""] for gd in glosses_data]
+
+        # Remove double spaces in glosses
+        gloss_list = list()
+        for gd in glosses_data:
+            if "  " not in gd[3]:
+                gloss_list.append(gd)
+            else:
+                new_gl = gd[3]
+                while "  " in new_gl:
+                    new_gl = " ".join(new_gl.split("  "))
+                new_gd = [gd[0], gd[1], gd[2], new_gl]
+                gloss_list.append(new_gd)
+
+        # remove spacing before punctuation in glosses
+        glosses_data = [[gd[0], gd[1], gd[2], ",".join(gd[3].split(" ,"))] for gd in gloss_list]
 
         # Pair glosses on the same lemma from different manuscripts, and remove all unpaired glosses
         gloss_pairs = list()
@@ -199,8 +228,13 @@ def apply_bestmod(model="default", cutoff="default", llm="default", output_filen
         df.to_excel(os.path.join(output_dir, out_file), index=False)
 
 
-def apply_allmods(include_false=True, normalise=False):
+def apply_allmods(include_false=True, normalise=False, outfile_namemod="default"):
     """Applies all variants of all models at once, using optimised hyperparameters"""
+
+    if outfile_namemod == "default":
+        nm = ""
+    else:
+        nm = "(" + outfile_namemod + ") "
 
     for model_type in ["ED", "LCS", "LLM"]:
         cutoff = "default"
@@ -214,9 +248,9 @@ def apply_allmods(include_false=True, normalise=False):
                     hf_model = "default"
                     lat_mod = "default"
                 if normalise:
-                    out_file = f"Paired Glossses for *base_text_name* ({model_type} - {hf_model} - Text Normalised)"
+                    out_file = f"Paired Glossses for *base_text_name* {nm}({model_type} - {hf_model} - Text Normalised)"
                 else:
-                    out_file = f"Paired Glossses for *base_text_name* ({model_type} - {hf_model})"
+                    out_file = f"Paired Glossses for *base_text_name* {nm}({model_type} - {hf_model})"
                 apply_bestmod(model=model_type, cutoff=cutoff, llm=lat_mod, output_filename=out_file,
                               include_false=include_false, normalise=normalise)
         else:
